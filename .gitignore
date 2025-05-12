@@ -52,6 +52,10 @@ client_web/coverage/
 client_mobile/node_modules/
 client_mobile/.expo/
 client_mobile/.expo-shared/
+client_mobile/.env
+client_mobile/.env.local
+client_mobile/.env.development
+client_mobile/.env.production
 client_mobile/*.jks
 client_mobile/*.p8
 client_mobile/*.p12
@@ -107,3 +111,6 @@ flask_api/junit.xml
 client_web/coverage/
 client_web/.nyc_output/
 client_web/junit.xml
+client_mobile/coverage/
+client_mobile/.nyc_output/
+client_mobile/junit.xml

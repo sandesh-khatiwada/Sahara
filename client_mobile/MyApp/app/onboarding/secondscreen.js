@@ -1,7 +1,7 @@
 import { View, Text } from 'react-native'
 import React from 'react'
 
-const secondScreen = () => {
+const secondscreen = () => {
   return (
     <View>
       <Text>secondScreen</Text>
@@ -9,4 +9,4 @@ const secondScreen = () => {
   )
 }
 
-export default secondScreen
+export default secondscreen

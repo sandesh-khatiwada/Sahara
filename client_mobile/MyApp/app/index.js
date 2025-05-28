@@ -1,16 +1,21 @@
-import { View, Text, Button } from 'react-native';
+import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
 
-export default function Home() {
+export default function Index() {
   const router = useRouter();
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      router.replace('/onboarding/firstscreen'); // or just '/onboarding' if using index.js inside onboarding
+    }, 100); // slight delay to ensure router is ready
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Welcome to Expo Router!</Text>
-      <Button
-        title="Go to Onboarding"
-        onPress={() => router.push('/onboarding/firstScreen')}
-      />
+      <ActivityIndicator size="large" />
     </View>
   );
 }

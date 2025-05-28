@@ -7,8 +7,8 @@ export default function Index() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      router.replace('/onboarding/firstscreen'); // or just '/onboarding' if using index.js inside onboarding
-    }, 100); // slight delay to ensure router is ready
+      router.replace('/onboarding/firstscreen');
+    }, 100); 
 
     return () => clearTimeout(timeout);
   }, []);

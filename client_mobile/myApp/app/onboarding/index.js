@@ -1,53 +1,38 @@
 import React from 'react';
 import Onboarding from 'react-native-onboarding-swiper';
-import { Image, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import LottieView from 'lottie-react-native';
+import Button from '../components/button'; // ✅ Import your reusable Button
+
+const { width } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
   const handleDone = async () => {
     await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-    router.replace('/auth/signup'); // or wherever
+    router.replace('/auth/signup');
   };
 
-  // Custom Dot Component for rectangular dots
-  const CustomDot = ({ selected }) => {
-    return (
-      <View
-        style={[
-          styles.dot,
-          selected ? styles.activeDot : styles.inactiveDot,
-        ]}
-      />
-    );
-  };
+  const CustomDot = ({ selected }) => (
+    <View
+      style={[
+        styles.dot,
+        selected ? styles.activeDot : styles.inactiveDot,
+      ]}
+    />
+  );
 
-  // Custom Done Button Component
-  const CustomDoneButton = ({ ...props }) => {
-    return (
-      <TouchableOpacity style={styles.button} onPress={props.onPress}>
-        <Text style={styles.buttonText}>Done</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  // Custom Next Button Component
-  const CustomNextButton = ({ ...props }) => {
-    return (
-      <TouchableOpacity style={styles.button} onPress={props.onPress}>
-        <Text style={styles.buttonText}>Next</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  // Custom Skip Button Component
-  const CustomSkipButton = ({ ...props }) => {
-    return (
-      <TouchableOpacity style={styles.button} onPress={props.onPress}>
-        <Text style={styles.buttonText}>skip</Text>
-      </TouchableOpacity>
-    );
-  };
+  const CustomButton = ({ onPress, label }) => (
+    <Button
+      title={label}
+      onPress={onPress}
+      backgroundColor="#6200EE"
+      textColor="#fff"
+      style={[styles.onboardingButton, { height: 40 }]} 
+      textStyle={styles.onboardingButtonText}
+    />
+  );
 
   return (
     <Onboarding
@@ -55,36 +40,96 @@ export default function OnboardingScreen() {
       onSkip={handleDone}
       bottomBarHighlight={false}
       DotComponent={CustomDot}
-      DoneButtonComponent={CustomDoneButton}
-      NextButtonComponent={CustomNextButton}
-      SkipButtonComponent={CustomSkipButton}
-      showSkip={true} // Enable the skip button
+      DoneButtonComponent={(props) => <CustomButton {...props} label="Done" />}
+      NextButtonComponent={(props) => <CustomButton {...props} label="Next" />}
+      SkipButtonComponent={(props) => <CustomButton {...props} label="Skip" />}
+      showSkip={true}
       pages={[
         {
           backgroundColor: '#E3F2FD',
-          image: <Image source={require('../../assets/logo/SaharaLOGO.png')} style={{ width: 250, height: 250 }} />,
-          title: 'AI Counselor',
-          subtitle: 'Get instant support from a smart, stigma-free AI trained in mental wellness.',
+          image: (
+            <View style={styles.imageContainer}>
+              <LottieView
+                source={require('../../assets/animation/Robot.json')}
+                autoPlay
+                loop
+                style={styles.lottie}
+              />
+            </View>
+          ),
+          title: (
+            <Text style={styles.title}>
+              AI{'\n'}Counselor
+            </Text>
+          ),
+          subtitle: (
+            <Text style={styles.subtitle}>
+              Get instant support from a smart, stigma-free AI trained in mental wellness.
+            </Text>
+          ),
         },
         {
           backgroundColor: '#E3F2FD',
-          image: <Image source={require('../../assets/logo/SaharaLOGO.png')} style={{ width: 250, height: 250 }} />,
-          title: 'Real Therapists',
-          subtitle: 'Talk to licensed professionals at your pace, fully private and secure.',
+          image: (
+            <View style={styles.imageContainer}>
+              <LottieView
+                source={require('../../assets/animation/Therapist.json')}
+                autoPlay
+                loop
+                style={styles.lottie}
+              />
+            </View>
+          ),
+          title: (
+            <Text style={styles.title}>
+              Real{'\n'}Therapists
+            </Text>
+          ),
+          subtitle: (
+            <Text style={styles.subtitle}>
+              Talk to licensed professionals at your pace, fully private and secure.
+            </Text>
+          ),
         },
         {
           backgroundColor: '#E3F2FD',
-          image: <Image source={require('../../assets/logo/SaharaLOGO.png')} style={{ width: 250, height: 250 }} />,
-          title: 'Emergency Help',
-          subtitle: 'Get instant support when panic or distress hits, anytime you need it.',
+          image: (
+            <View style={styles.imageContainer}>
+              <LottieView
+                source={require('../../assets/animation/Emmergency.json')}
+                autoPlay
+                loop
+                style={styles.lottie}
+              />
+            </View>
+          ),
+          title: (
+            <Text style={styles.title}>
+              Emergency{'\n'}Help
+            </Text>
+          ),
+          subtitle: (
+            <Text style={styles.subtitle}>
+              Get instant support when panic or distress hits, anytime you need it.
+            </Text>
+          ),
         },
       ]}
     />
   );
 }
 
-// Define styles using StyleSheet
 const styles = StyleSheet.create({
+  imageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: width * 0.7,
+    height: width * 0.7,
+  },
+  lottie: {
+    width: '100%',
+    height: '100%',
+  },
   dot: {
     height: 6,
     marginHorizontal: 4,
@@ -92,7 +137,7 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     backgroundColor: '#333',
-    width: 30,
+    width: 35,
   },
   inactiveDot: {
     borderWidth: 1,
@@ -100,15 +145,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     width: 20,
   },
-  button: {
-    backgroundColor: '#6200EE', // Consistent purple background for all buttons
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginHorizontal: 20, // Add margin for spacing in the bottom bar
+  onboardingButton: {
+    marginHorizontal: 13,
+    paddingHorizontal: 18,
+    paddingVertical: 5,
+    borderRadius: 15,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
+  onboardingButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#000',
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 30,
+    marginBottom: 10,
+    lineHeight: 36,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 30,
+    lineHeight: 22,
+    maxWidth: width - 60,
   },
 });

@@ -16,7 +16,7 @@ export default function SplashScreen() {
       } else {
         router.replace('/onboarding');
       }
-    }, 5000); 
+    }, 2000); 
 
     return () => clearTimeout(timer);
   }, []);
@@ -36,8 +36,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#E3F2FD'
   },
   logo: {
-    width: width*0.9,
-    height: height*0.3, 
+    width: width,
+    height: height, 
     resizeMode: 'contain'
   }
 });

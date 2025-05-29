@@ -1,0 +1,14 @@
+Install Expo Cli in mobile
+
+Install the dependencies by 
+    - npm Install
+
+To run the project
+    -npx expo start
+    -it generates the qr code.
+    -open expo app and scan the qr code 
+    -remember the mobile and laptop must be connected to same wifi
+    -you can enjoy the project. heheeeeeeeeee
+
+
+    

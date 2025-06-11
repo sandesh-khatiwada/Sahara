@@ -1,73 +1,93 @@
-// app/components/inputwithicon.js
 import React from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const InputWithIcon = ({ iconName, placeholder, value, onChangeText, secureTextEntry, keyboardType, autoCapitalize, showPassword, togglePassword }) => {
+const InputWithIcon = ({
+  label,
+  iconName,
+  placeholder,
+  value,
+  onChangeText,
+  secureTextEntry,
+  keyboardType,
+  autoCapitalize,
+  showPassword,
+  togglePassword,
+}) => {
   return (
-    <View style={styles.inputContainer}>
-      <MaterialCommunityIcons
-        name={iconName}
-        size={20}
-        color="#666"
-        style={styles.icon}
-      />
-      <View style={styles.separator} />
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor="#666"
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-      />
-      {showPassword !== undefined && (
-        <TouchableOpacity
-          style={styles.passwordIcon}
-          onPress={togglePassword}
-        >
-          <MaterialCommunityIcons
-            name={showPassword ? 'eye-off' : 'eye'}
-            size={20}
-            color="#666"
-          />
-        </TouchableOpacity>
-      )}
+    <View style={styles.wrapper}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      
+      <View style={styles.inputContainer}>
+        <MaterialCommunityIcons
+          name={iconName}
+          size={20}
+          color="#666"
+          style={styles.icon}
+        />
+        <View style={styles.separator} />
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor="#666"
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+        />
+        {showPassword !== undefined && (
+          <TouchableOpacity style={styles.passwordIcon} onPress={togglePassword}>
+            <MaterialCommunityIcons
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={20}
+              color="#666"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    width: '95%',
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight:'bold',
+    color: '#333',
+    marginBottom: 5,
+    marginLeft: 5,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '95%',
     height: 50,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 20,
-    marginBottom: 15,
     backgroundColor: '#fff',
-  },
-  separator: {
-    width: 1, // Thickness of the vertical line
-    height: 25, // Height of the line (adjust to fit within the input height)
-    backgroundColor: '#ccc', // Color to match the border
-    marginHorizontal: 0, // Space between icon and line
+    paddingHorizontal: 10,
   },
   icon: {
-    paddingHorizontal: 10,
+    marginRight: 5,
+  },
+  separator: {
+    width: 1,
+    height: 25,
+    backgroundColor: '#ccc',
+    marginRight: 8,
   },
   input: {
     flex: 1,
     height: '100%',
-    paddingHorizontal: 10,
     fontSize: 16,
   },
   passwordIcon: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 5,
   },
 });
 

@@ -19,10 +19,11 @@ const Signup = () => {
       Alert.alert('Error', 'Passwords do not match.');
       return;
     }
-   
+
     try {
       await AsyncStorage.setItem('user', JSON.stringify({ fullName, email }));
-      router.replace('/auth/otp');
+
+      router.replace('/auth/login');
     } catch (error) {
       Alert.alert('Error', 'Failed to save user data.');
       console.error('AsyncStorage error:', error);
@@ -32,13 +33,14 @@ const Signup = () => {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../assets/images/handsHolding.jpg')}
+        source={require('../../assets/image/signup.png')}
         style={styles.backgroundImage}
       />
       <View style={styles.formContainer}>
         <Text style={styles.title}>Register</Text>
         <Text style={styles.subtitle}>Join Sahara for support that cares.</Text>
         <InputWithIcon
+          label="Full Name"
           iconName="account-outline"
           placeholder="Full Name"
           value={fullName}
@@ -46,6 +48,7 @@ const Signup = () => {
           autoCapitalize="words"
         />
         <InputWithIcon
+          label="Email"
           iconName="email-outline"
           placeholder="Email"
           value={email}
@@ -54,6 +57,7 @@ const Signup = () => {
           autoCapitalize="none"
         />
         <InputWithIcon
+          label="Password"
           iconName="lock-outline"
           placeholder="Password"
           value={password}
@@ -63,6 +67,7 @@ const Signup = () => {
           togglePassword={() => setShowPassword(!showPassword)}
         />
         <InputWithIcon
+          label="Confirm Password"
           iconName="lock-outline"
           placeholder="Confirm Password"
           value={confirmPassword}
@@ -79,7 +84,7 @@ const Signup = () => {
           <Text style={styles.orText}>OR</Text>
           <View style={styles.line} />
         </View>
-        <TouchableOpacity onPress={() => router.push('/auth/otp')}>
+        <TouchableOpacity onPress={() => router.push('/auth/login')}>
           <View style={styles.loginContainer}>
             <Text style={styles.loginPrompt}>Already have an account? </Text>
             <Text style={styles.loginText}>Login</Text>
@@ -114,7 +119,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
-    marginTop: -140,
+    marginTop: -100,
   },
   subtitle: {
     fontSize: 16,

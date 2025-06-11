@@ -22,13 +22,14 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill all fields.');
-      return;
-    }
+    // if (!email || !password) {
+    //   Alert.alert('Error', 'Please fill all fields.');
+    //   return;
+    // }
+
     try {
       await AsyncStorage.setItem('user', JSON.stringify({ email, role }));
-      router.replace('/home');
+      router.replace('/auth/otp');
     } catch (error) {
       Alert.alert('Error', 'Failed to login.');
       console.error('AsyncStorage error:', error);
@@ -43,14 +44,15 @@ const Login = () => {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../assets/images/handsHolding.jpg')}
+        source={require('../../assets/image/Therapist_client.png')}
         style={styles.backgroundImage}
       />
       <View style={styles.formContainer}>
-        <Text style={styles.title}>Welcome {role === 'user' ? 'In' : 'Back'}</Text>
+        <Text style={styles.title}>Welcome Back </Text>
         <Text style={styles.subtitle}>Sign in to start your mental wellness journey.</Text>
 
         <InputWithIcon
+          label={"Email"}
           iconName="email-outline"
           placeholder="Email"
           value={email}
@@ -60,6 +62,7 @@ const Login = () => {
         />
 
         <InputWithIcon
+          label={"Password"}
           iconName="lock-outline"
           placeholder="Password"
           value={password}
@@ -70,6 +73,7 @@ const Login = () => {
         />
 
         <InputWithIcon
+          label={"Role"}
           iconName="account-switch-outline"
           placeholder="Role"
           isDropdown={true}
@@ -128,7 +132,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 10,
-    marginTop: -180,
+    marginTop: -150,
   },
   subtitle: {
     fontSize: 16,

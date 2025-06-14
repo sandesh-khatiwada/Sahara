@@ -1,6 +1,6 @@
 import express from 'express';
 import { signup, verifyOTP, resendOTP, login } from '../controllers/authController.js';
-import { addJournal, getJournals } from '../controllers/userController.js';
+import { addJournal, getJournals, getMoodHistory } from '../controllers/userController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -22,5 +22,8 @@ router.post('/journals', verifyToken, addJournal);
 
 // GET /api/users/journals - Get user's journal entries (protected route)
 router.get('/journals', verifyToken, getJournals);
+
+// GET /api/users/mood/history - Get user's mood history (protected route)
+router.get('/mood/history', verifyToken, getMoodHistory);
 
 export default router; 

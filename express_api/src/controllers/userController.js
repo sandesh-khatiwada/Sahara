@@ -109,4 +109,49 @@ export const getJournals = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Get user's mood history
+export const getMoodHistory = async (req, res) => {
+  try {
+    // Get last 7 journal entries for the user, sorted by date (oldest first)
+    const moodHistory = await JournalEntry.find({ user: req.user._id })
+      .select('explicitEmotion createdAt')
+      .sort({ createdAt: 1 })  // Sort by date ascending (oldest first)
+      .limit(7);
+
+    // Transform the data to include day and mood
+    const formattedHistory = moodHistory.map(entry => {
+      const date = new Date(entry.createdAt);
+      // Get day abbreviation (Sun, Mon, Tue, etc.)
+      const dayAbbr = date.toLocaleDateString('en-US', { weekday: 'short' });
+      return {
+        day: dayAbbr,
+        mood: entry.explicitEmotion
+      };
+    });
+
+    // Calculate feltBetterCount
+    const feltBetterCount = moodHistory.filter(entry => {
+      const mood = entry.explicitEmotion.toLowerCase();
+      return mood === 'good' || mood === 'great';
+    }).length;
+
+    res.status(200).json({
+      success: true,
+      message: 'Mood history retrieved successfully',
+      data: {
+        history: formattedHistory,
+        feltBetterCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Get mood history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving mood history',
+      error: error.message
+    });
+  }
 }; 

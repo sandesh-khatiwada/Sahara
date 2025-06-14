@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import validator from 'validator';
 import { sendOTPEmail } from '../utils/emailConfig.js';
 import jwt from 'jsonwebtoken';
+import { storePasswordResetRequest, getPasswordResetRequest, deletePasswordResetRequest } from '../utils/tempStorage.js';
 
 // Generate 6 digit OTP
 const generateOTP = () => {
@@ -376,6 +377,160 @@ export const login = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error during login',
+      error: error.message
+    });
+  }
+};
+
+// Request password reset
+export const requestPasswordReset = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    // Validation
+    if (!email || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and new password'
+      });
+    }
+
+    // Password validation
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long and contain at least one number and one special character (!@#$%^&*)'
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const otpRecord = await OTP.findOne({ user: user._id });
+    if (otpRecord) {
+        console.log("OTP record found and deleted");
+      await OTP.deleteOne({ _id: otpRecord._id });
+    }
+    
+    // Store password reset request
+    storePasswordResetRequest(email, newPassword);
+
+    // Generate and save OTP
+    const otp = generateOTP();
+    const hashedOTP = await hashOTP(otp);
+    await OTP.create({
+      user: user._id,
+      hashedOTP,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
+    });
+
+    // Send OTP via email
+    try {
+      await sendOTPEmail(email, otp);
+    } catch (emailError) {
+      console.error('Error sending OTP email:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Error sending OTP email'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP has been sent to your email for password reset verification'
+    });
+
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing password reset request',
+      error: error.message
+    });
+  }
+};
+
+// Verify OTP and reset password
+export const verifyOTPAndResetPassword = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and OTP are required'
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Find valid OTP
+    const otpRecord = await OTP.findOne({
+      user: user._id,
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    // Verify OTP
+    const isValidOTP = await compareOTP(otp, otpRecord.hashedOTP);
+    if (!isValidOTP) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP'
+      });
+    }
+
+    // Get stored password reset request
+    const resetRequest = getPasswordResetRequest(email);
+    if (!resetRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password reset request not found or expired'
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(resetRequest.newPassword, salt);
+
+    // Update user's password
+    user.password = hashedPassword;
+    await user.save();
+
+    // Delete used OTP and reset request
+    await OTP.deleteOne({ _id: otpRecord._id });
+    deletePasswordResetRequest(email);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password has been reset successfully'
+    });
+
+  } catch (error) {
+    console.error('Password reset verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error resetting password',
       error: error.message
     });
   }

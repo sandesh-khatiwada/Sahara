@@ -1,4 +1,5 @@
 import JournalEntry from '../models/JournalEntry.js';
+import Counsellor from '../models/Counsellor.js';
 
 // Add journal entry
 export const addJournal = async (req, res) => {
@@ -151,6 +152,42 @@ export const getMoodHistory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error retrieving mood history',
+      error: error.message
+    });
+  }
+};
+
+// Get counsellor details
+export const getCounsellors = async (req, res) => {
+  try {
+    // Get random 15 counsellors using aggregation
+    const counsellors = await Counsellor.aggregate([
+      { $match: { isActive: true } }, // Only get active counsellors
+      { $sample: { size: 15 } }, // Randomly select 15 counsellors
+      {
+        $project: {
+          fullName: 1,
+          designation: 1,
+          email: 1,
+          chargePerHour: 1,
+          profilePhoto: 1,
+          _id: 0 // Exclude _id from the result
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        counsellors,
+        total: counsellors.length
+      }
+    });
+  } catch (error) {
+    console.error('Get counsellors error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching counsellors',
       error: error.message
     });
   }

@@ -22,7 +22,7 @@ export const sendOTPEmail = async (email, otp) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">Email Verification</h2>
-          <p>Thank you for signing up with Sahara. Please use the following OTP to verify your email address:</p>
+          <p>This is Sahara. Please use the following OTP to verify your email address:</p>
           <div style="background-color: #f4f4f4; padding: 10px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0;">
             <strong>${otp}</strong>
           </div>

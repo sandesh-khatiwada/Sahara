@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
+import adminRoutes from "./routes/adminRoutes.js";
+
 
 // Load environment variables
 dotenv.config();
@@ -20,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

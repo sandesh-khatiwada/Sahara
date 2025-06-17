@@ -1,4 +1,3 @@
-// app/screens/Login.js
 import React, { useState } from 'react';
 import {
   View,
@@ -8,6 +7,7 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -18,27 +18,84 @@ const { width, height } = Dimensions.get('window');
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('user');
+  const [role, setRole] = useState('User'); // Note: Capitalized to match backend
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    // if (!email || !password) {
-    //   Alert.alert('Error', 'Please fill all fields.');
-    //   return;
-    // }
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill all fields.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      await AsyncStorage.setItem('user', JSON.stringify({ email, role }));
-      router.replace('/auth/otp');
+      const response = await fetch('http://192.168.1.88:5000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Store user data and token
+      await AsyncStorage.setItem('user', JSON.stringify({
+        email: data.data[role].email,
+        fullName: data.data[role].fullName,
+        id: data.data[role]._id,
+        role,
+        token: data.data.token
+      }));
+
+      // Handle email verification for users
+      if (role === 'User' && !data.data.User.emailVerified) {
+        router.replace('/auth/otp');
+        Alert.alert('Verification Needed', 'Please verify your email first');
+        return;
+      }
+
+      // Navigate to appropriate screen based on role
+      if (role === 'User') {
+        router.replace('/main/home');
+      } else {
+        router.replace('/main/home');
+      }
+
     } catch (error) {
-      Alert.alert('Error', 'Failed to login.');
-      console.error('AsyncStorage error:', error);
+      console.error('Login error:', error);
+      
+      // Handle specific error cases
+      if (error.message.includes('verify your email')) {
+        router.replace('/auth/otp');
+      }
+      
+      Alert.alert(
+        'Login Failed', 
+        error.message || 'An error occurred during login'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleForgotPassword = () => {
+    router.push('/auth/changepassword');
+  };
+
   const roleOptions = [
-    { label: 'User', value: 'user' },
-    { label: 'Counselor', value: 'counselor' },
+    { label: 'User', value: 'User' },
+    { label: 'Counselor', value: 'Counsellor' }, // Note: Value matches backend exactly
   ];
 
   return (
@@ -48,11 +105,11 @@ const Login = () => {
         style={styles.backgroundImage}
       />
       <View style={styles.formContainer}>
-        <Text style={styles.title}>Welcome Back </Text>
+        <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to start your mental wellness journey.</Text>
 
         <InputWithIcon
-          label={"Email"}
+          label="Email"
           iconName="email-outline"
           placeholder="Email"
           value={email}
@@ -62,7 +119,7 @@ const Login = () => {
         />
 
         <InputWithIcon
-          label={"Password"}
+          label="Password"
           iconName="lock-outline"
           placeholder="Password"
           value={password}
@@ -73,7 +130,7 @@ const Login = () => {
         />
 
         <InputWithIcon
-          label={"Role"}
+          label="Role"
           iconName="account-switch-outline"
           placeholder="Role"
           isDropdown={true}
@@ -82,12 +139,23 @@ const Login = () => {
           onValueChange={(value) => setRole(value)}
         />
 
-        <TouchableOpacity style={styles.forgotPassword}>
+        <TouchableOpacity 
+          style={styles.forgotPassword} 
+          onPress={handleForgotPassword}
+        >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Login</Text>
+        <TouchableOpacity 
+          style={[styles.loginButton, loading && styles.disabledButton]} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginButtonText}>Login</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.orContainer}>
@@ -158,6 +226,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#99C2FF',
   },
   loginButtonText: {
     color: '#fff',

@@ -1,4 +1,3 @@
-// app/screens/ChangePassword.js
 import React, { useState } from 'react';
 import {
     View,
@@ -16,6 +15,7 @@ import InputWithIcon from '../components/inputwithicons.js';
 const { height } = Dimensions.get('window');
 
 const ChangePassword = () => {
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
@@ -37,10 +37,18 @@ const ChangePassword = () => {
             />
             <View style={styles.formWrapper}>
                 <Text style={styles.title}>Change Password</Text>
-                <Text style={styles.subtitle}>The opt is sent to your email.</Text>
-
+                <Text style={styles.subtitle}>The otp is sent to your email.</Text>
                 <InputWithIcon
-                    label={"New Password"}
+                    label="Email"
+                    iconName="email"
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
+                <InputWithIcon
+                    label="New Password"
                     iconName="lock-outline"
                     placeholder="New Password"
                     value={password}
@@ -50,7 +58,7 @@ const ChangePassword = () => {
                     togglePassword={() => setShowPassword(!showPassword)}
                 />
                 <InputWithIcon
-                    label={"Confirm Password"}
+                    label="Confirm Password"
                     iconName="lock-outline"
                     placeholder="Confirm Password"
                     value={password}
@@ -93,14 +101,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#000',
         marginBottom: 10,
-        marginTop: -300,
+        marginTop: -200,
     },
     subtitle: {
         fontSize: 16,
         color: '#666',
         marginBottom: 20,
         textAlign: 'center',
-      },
+    },
     saveButton: {
         width: '95%',
         height: 50,

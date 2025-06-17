@@ -1,36 +1,119 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ImageBackground, StyleSheet, Dimensions, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ImageBackground, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
 const Otp = () => {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']); 
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [countdown, setCountdown] = useState(60);
   const otpInputs = useRef([]);
 
-  const handleContinue = () => {
-    const otpCode = otp.join('');
-    if (otpCode.length === 6) {
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
-      router.push('/main/home');
-    } else {
-        router.push('/auth/changepassword');
-    // router.replace('onboarding');
+  const handleContinue = async () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== 6) {
+      Alert.alert('Error', 'Please enter a complete 6-digit code.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const user = JSON.parse(await AsyncStorage.getItem('user'));
+      if (!user?.email) {
+        Alert.alert('Error', 'User session expired. Please sign up again.');
+        return router.push('/auth/signup');
+      }
+
+      const response = await fetch('http://192.168.1.88:5000/api/users/otp/verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, otp: otpCode })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'OTP verification failed');
+      }
+
+      Alert.alert('Success', 'Email verified successfully!', [
+        { text: 'OK', onPress: () => router.push('/auth/login') }
+      ]);
+
+    } catch (error) {
+      Alert.alert(
+        'Verification Failed',
+        error.message,
+        error.message.includes('expired') || error.message.includes('Invalid')
+          ? [
+              { text: 'Try Again' },
+              { text: 'Resend OTP', onPress: handleResendOTP }
+            ]
+          : [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (countdown > 0) return;
+
+    setResendLoading(true);
+
+    try {
+      const user = JSON.parse(await AsyncStorage.getItem('user'));
+      if (!user?.email) {
+        Alert.alert('Error', 'User session expired. Please sign up again.');
+        return router.push('/auth/signup');
+      }
+
+      const response = await fetch('http://192.168.1.88:5000/api/users/otp/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to resend OTP');
+      }
+
+      setCountdown(60); // Reset countdown
+      Alert.alert('Success', 'New OTP has been sent to your email');
+
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setResendLoading(false);
     }
   };
 
   const handleOtpChange = (text, index) => {
+    // Filter non-numeric characters
+    const numericValue = text.replace(/[^0-9]/g, '');
     const newOtp = [...otp];
-    newOtp[index] = text;
+    newOtp[index] = numericValue.slice(0, 1);
     setOtp(newOtp);
 
-    // Auto-focus to next input if a digit is entered
-    if (text && index < 5) {
+    // Auto-focus next input or previous on backspace
+    if (numericValue && index < 5) {
       otpInputs.current[index + 1].focus();
-    }
-    // Move to previous input if backspace is pressed and field is empty
-    else if (!text && index > 0) {
+    } else if (!numericValue && index > 0) {
       otpInputs.current[index - 1].focus();
     }
   };
@@ -42,28 +125,56 @@ const Otp = () => {
         style={styles.backgroundImage}
       />
       <View style={styles.formContainer}>
-        <Text style={styles.title}>Enter your OTP</Text>
-        <Text style={styles.subtitle}>Please enter the code we sent in your email.</Text>
+        <Text style={styles.title}>Verify Your Email</Text>
+        <Text style={styles.subtitle}>
+          Enter the 6-digit code sent to your email
+        </Text>
+        
         <View style={styles.otpContainer}>
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              style={styles.otpInput}
+              style={[
+                styles.otpInput,
+                digit && styles.otpInputFilled,
+                loading && styles.otpInputDisabled
+              ]}
               value={digit}
               onChangeText={(text) => handleOtpChange(text, index)}
-              keyboardType="numeric"
+              keyboardType="number-pad"
               maxLength={1}
               ref={(ref) => (otpInputs.current[index] = ref)}
+              editable={!loading}
+              selectTextOnFocus
             />
           ))}
         </View>
-        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueButtonText}>Submit</Text>
+
+        <TouchableOpacity 
+          style={[styles.continueButton, loading && styles.disabledButton]}
+          onPress={handleContinue}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.continueButtonText}>Verify OTP</Text>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/auth/resendotp')}>
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginPrompt}>Did not Receive OTP? </Text>
-            <Text style={styles.loginText}>Resend</Text>
+
+        <TouchableOpacity 
+          onPress={handleResendOTP}
+          disabled={countdown > 0 || resendLoading}
+        >
+          <View style={styles.resendContainer}>
+            <Text style={styles.resendPrompt}>Didn't receive code? </Text>
+            {countdown > 0 ? (
+              <Text style={styles.resendCountdown}>Resend in {countdown}s</Text>
+            ) : resendLoading ? (
+              <ActivityIndicator size="small" color="#007AFF" />
+            ) : (
+              <Text style={styles.resendText}>Resend OTP</Text>
+            )}
           </View>
         </TouchableOpacity>
       </View>
@@ -95,61 +206,72 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
-    marginTop: -350,
+    marginBottom: 5,
+    marginTop: -100,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginTop: 10,
-    marginBottom: 20,
+    marginBottom: 30,
     textAlign: 'center',
   },
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '95%',
-    marginBottom: 80,
-    marginTop: 30,
+    width: '90%',
+    marginBottom: 40,
   },
   otpInput: {
-    width: 40,
-    height: 50,
+    width: 45,
+    height: 55,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 5,
+    borderRadius: 8,
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: 20,
+    backgroundColor: '#fff',
+  },
+  otpInputFilled: {
+    borderColor: '#007AFF',
+    backgroundColor: '#f0f8ff',
+  },
+  otpInputDisabled: {
+    backgroundColor: '#f5f5f5',
   },
   continueButton: {
-    width: '95%',
+    width: '80%',
     height: 50,
     backgroundColor: '#007AFF',
-    borderRadius: 20,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -30,
+    marginBottom: 20,
+  },
+  disabledButton: {
+    backgroundColor: '#99C2FF',
   },
   continueButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  loginContainer: {
+  resendContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-
+    alignItems: 'center',
+    marginTop: 20,
   },
-  loginPrompt: {
-    color: 'black',
-    fontWeight: '500',
+  resendPrompt: {
+    color: '#666',
     fontSize: 16,
-    marginTop: 30,
   },
-  loginText: {
+  resendText: {
     color: '#007AFF',
     fontSize: 16,
-    textDecorationLine: 'none',
-    marginTop: 30,
+    fontWeight: '500',
+  },
+  resendCountdown: {
+    color: '#999',
+    fontSize: 16,
   },
 });
 

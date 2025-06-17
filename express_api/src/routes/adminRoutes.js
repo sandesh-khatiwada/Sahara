@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, addCounsellor, getProfile, getTotalUsers, getTotalCounsellors } from '../controllers/adminController.js';
+import { login, addCounsellor, getProfile, getTotalUsers, getTotalCounsellors, getAllCounsellors, getAllUsers } from '../controllers/adminController.js';
 import { verifyAdmin } from '../middleware/verifyAdmin.js';
 import { upload } from '../utils/fileUpload.js';
 
@@ -23,5 +23,11 @@ router.post(
 router.get('/profile', verifyAdmin, getProfile);
 router.get('/total-users', verifyAdmin, getTotalUsers);
 router.get('/total-counsellors', verifyAdmin, getTotalCounsellors);
+
+// GET /admin/counsellors - Get all counsellors (admin only)
+router.get('/counsellors', verifyAdmin, getAllCounsellors);
+
+// GET /admin/users - Get all users (admin only)
+router.get('/users', verifyAdmin, getAllUsers);
 
 export default router; 

@@ -4,6 +4,8 @@ import Login from './pages/admin/Login';
 import DashboardLayout from './components/admin/DashboardLayout';
 import Home from './pages/admin/Home';
 import AddCounsellor from './pages/admin/AddCounsellor';
+import Counsellors from './pages/admin/Counsellors';
+import Users from './pages/admin/Users';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -33,6 +35,22 @@ function App() {
           element={
             <ProtectedRoute>
               <AddCounsellor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/counsellors"
+          element={
+            <ProtectedRoute>
+              <Counsellors />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute>
+              <Users />
             </ProtectedRoute>
           }
         />

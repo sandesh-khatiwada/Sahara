@@ -340,4 +340,86 @@ export const getTotalCounsellors = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Get all counsellors (admin only)
+export const getAllCounsellors = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalCounsellors = await Counsellor.countDocuments();
+    const totalPages = Math.ceil(totalCounsellors / limit);
+
+    const counsellors = await Counsellor.find()
+      .select('-password -passwordChangeStatus -sessions -notifications')
+      .sort({ createdAt: -1 }) // Sort by newest first
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        counsellors,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCounsellors,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get all counsellors error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching counsellors',
+      error: error.message
+    });
+  }
+};
+
+// Get all users (admin only)
+export const getAllUsers = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalUsers = await User.countDocuments();
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    const users = await User.find()
+      .select('-password -journalEntries -sleepLogs -sessions -notifications -chats')
+      .sort({ createdAt: -1 }) // Sort by newest first
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalUsers,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching users',
+      error: error.message
+    });
+  }
 }; 

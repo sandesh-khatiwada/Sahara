@@ -19,7 +19,29 @@ const journalEntrySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please share your mood for today']
   },
-  emotionalTone: String,
+  emotionalTone: {
+    type: {
+      max_confidence: {
+        type: Number,
+        required: true
+      },
+      predictions: [{
+        confidence: {
+          type: Number,
+          required: true
+        },
+        emotion: {
+          type: String,
+          required: true
+        }
+      }],
+      text: {
+        type: String,
+        required: true
+      }
+    },
+    required: false // Set to false if emotionalTone is optional
+  },
   confidenceScore: Number,
   timestamp: {
     type: Date,
@@ -37,4 +59,4 @@ const journalEntrySchema = new mongoose.Schema({
 
 const JournalEntry = mongoose.model('JournalEntry', journalEntrySchema);
 
-export default JournalEntry; 
+export default JournalEntry;

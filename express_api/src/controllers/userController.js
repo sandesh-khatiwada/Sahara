@@ -6,6 +6,11 @@ export const addJournal = async (req, res) => {
   try {
     const { title, explicitEmotion, content, shareStatus } = req.body;
 
+    console.log("Title:", title);
+    console.log("Explicit Emotion:", explicitEmotion);
+    console.log("Content:", content);   
+    console.log("Share Status:", shareStatus);
+
     // Validation
     if (!title || !explicitEmotion || !content || shareStatus === undefined) {
       return res.status(400).json({
@@ -45,11 +50,38 @@ export const addJournal = async (req, res) => {
     //   });
     // }
 
+    //Get AI Prediction
+
+
+    // Make API call to Flask API
+    const response = await fetch('http://localhost:8000/api/predict', { // Replace with your Flask API URL
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: content, // Pass the journal content for prediction
+      }),
+    }); 
+
+    console.log("Response from AI API:", response);
+
+    if (!response.ok) {
+      console.log("Could not fetch data from AI API");
+    }
+    
+    const aiResponse = await response.json();
+    const emotionalTone = aiResponse;
+
+    console.log("AI Response:", aiResponse);
+
     // Create journal entry
     const journalEntry = await JournalEntry.create({
       user: req.user._id,
       title,
       explicitEmotion,
+      emotionalTone,
+      confidenceScore: aiResponse.max_confidence, // Assuming max_confidence is part
       content,
       shareStatus: shareStatus === true
     });

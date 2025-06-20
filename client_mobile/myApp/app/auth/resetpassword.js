@@ -95,10 +95,10 @@ const ResetOtp = () => {
 
       // Call the same endpoint or correct resend endpoint
       // Assuming same endpoint to initiate OTP resend:
-      const response = await fetch(`${API_BASE_URL}/api/users/password/reset`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/otp/resend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword: 'placeholder' }), // You may need to store newPassword temporarily or adjust API accordingly
+        body: JSON.stringify({ email }), // You may need to store newPassword temporarily or adjust API accordingly
       });
 
       // Or if you have a dedicated resend OTP endpoint, replace the above fetch URL and body

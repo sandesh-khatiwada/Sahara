@@ -66,6 +66,8 @@ const Login = () => {
         updatedAt: data.data[role].updatedAt,
       };
       await AsyncStorage.setItem('user', JSON.stringify(userData));
+      await AsyncStorage.setItem('token', data.data.token); // Store token directly
+      // await AsyncStorage.setItem('token', JSON.stringify(token));
 
       // Handle email verification for users
       if (role === 'User' && !data.data.User.emailVerified) {

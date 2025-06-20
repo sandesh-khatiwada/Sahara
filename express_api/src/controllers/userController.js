@@ -54,7 +54,7 @@ export const addJournal = async (req, res) => {
 
 
     // Make API call to Flask API
-    const response = await fetch('http://localhost:8000/api/predict', { // Replace with your Flask API URL
+    const response = await fetch('http://localhost:8000/api/predict', { 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ export const getMoodHistory = async (req, res) => {
     // Get last 7 journal entries for the user, sorted by date (oldest first)
     const moodHistory = await JournalEntry.find({ user: req.user._id })
       .select('explicitEmotion createdAt')
-      .sort({ createdAt: 1 })  // Sort by date ascending (oldest first)
+      .sort({ createdAt: -1 })  // Sort by date ascending (oldest first)
       .limit(7);
 
     // Transform the data to include day and mood

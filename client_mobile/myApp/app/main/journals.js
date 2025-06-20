@@ -1,7 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, FlatList, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  FlatList,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import { API_BASE_URL } from '@env';
 
 const journals = () => {
   const [activeTab, setActiveTab] = useState('New Journal');
@@ -9,50 +21,52 @@ const journals = () => {
   const [mood, setMood] = useState(null);
   const [thoughts, setThoughts] = useState('');
   const [shareWithCounselor, setShareWithCounselor] = useState(false);
-
-  // Dummy data for journal history (replace with real data from API or storage)
-  const journalHistory = [
-    {
-      id: '1',
-      title: 'Finding Balance',
-      mood: 'Optimistic',
-      content: 'Today I found myself reflecting on the importance of the balance in my life. I\'ve been trying to juggle work with...',
-      date: 'June 12, 2023 10:45 pm',
-      hasAlert: true,
-    },
-    {
-      id: '2',
-      title: 'Finding Balance',
-      mood: 'Anxious',
-      content: 'Today I found myself reflecting on the importance of the balance in my life. I\'ve been trying to juggle work with...',
-      date: 'June 12, 2023 10:45 pm',
-      hasAlert: false,
-    },
-    {
-      id: '3',
-      title: 'Finding Balance',
-      mood: 'Proud',
-      content: 'Today I found myself reflecting on the importance of the balance in my life. I\'ve been trying to juggle work with...',
-      date: 'June 12, 2023 10:45 pm',
-      hasAlert: true,
-    },
-    {
-      id: '4',
-      title: 'Finding Balance',
-      mood: 'Optimistic',
-      content: 'Today I found myself reflecting on the importance of the balance in my life. I\'ve been trying to juggle work with...',
-      date: 'June 12, 2023 10:45 pm',
-      hasAlert: false,
-    },
-  ];
+  const [isSaving, setIsSaving] = useState(false);
+  const [journalHistory, setJournalHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const moodOptions = [
-    { emoji: '😢', value: 'Sad' },
+    { emoji: '😢', value: 'Bad' },
     { emoji: '😞', value: 'Low' },
     { emoji: '😐', value: 'Neutral' },
     { emoji: '🙂', value: 'Good' },
     { emoji: '😄', value: 'Great' },
   ];
+
+  const fetchJournalHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Error', 'No token found. Please log in again.');
+        router.replace('/auth/login');
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/users/journals`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to fetch journal history.');
+      }
+
+      setJournalHistory(data.data);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Error fetching journal history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJournalHistory();
+  }, []);
 
   const handleSaveEntry = async () => {
     if (!title || !mood || !thoughts) {
@@ -64,69 +78,76 @@ const journals = () => {
       return;
     }
 
-    const token = await AsyncStorage.getItem('token'); // Assuming token is stored as 'token'
+    const token = await AsyncStorage.getItem('token');
     if (!token) {
       Alert.alert('Error', 'No token provided. Please log in again.');
+      router.replace('/auth/login');
       return;
     }
 
     try {
-      const response = await fetch('https://your-api-base-url/users/journals', {
+      setIsSaving(true);
+
+      const response = await fetch(`${API_BASE_URL}/api/users/journals`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           title,
           explicitEmotion: mood,
           content: thoughts,
-          shareStatus: shareWithCounselor, // Set to true if checked, false if unchecked
+          shareStatus: shareWithCounselor,
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to save journal entry');
+        throw new Error(responseData.message || 'Failed to save journal entry');
       }
 
-      Alert.alert('Success', 'Journal entry created successfully');
+      const predictions = responseData.data.emotionalTone.predictions;
+      const emotionText = predictions
+        .map((pred) => `• ${pred.emotion} (${(pred.confidence * 100).toFixed(1)}%)`)
+        .join('\n');
+
+      Alert.alert('Journal Saved Successfully!', `Detected Emotions:\n${emotionText}`);
+
       setTitle('');
       setMood(null);
       setThoughts('');
       setShareWithCounselor(false);
+      fetchJournalHistory(); // refresh history
+      setActiveTab('Journal History'); // optionally switch tab
     } catch (error) {
       Alert.alert('Error', error.message || 'An error occurred while saving the entry');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const renderJournalItem = ({ item }) => (
     <View style={styles.historyItem}>
       <Text style={styles.historyTitle}>{item.title}</Text>
-      <Text style={styles.historyMood}>{item.mood}</Text>
-      <Text style={styles.historyContent}>{item.content.substring(0, 50)}...</Text>
-      <Text style={styles.historyDate}>{item.date}</Text>
-      {item.hasAlert && (
-        <View style={styles.alertIndicator}>
-          <MaterialCommunityIcons name="alert" size={16} color="#fff" />
-          <Text style={styles.alertText}>A</Text>
-        </View>
-      )}
+      <Text style={styles.historyMood}>Mood: {item.explicitEmotion}</Text>
+      <Text style={styles.historyContent}>
+        {item.content.length > 50 ? item.content.slice(0, 50) + '...' : item.content}
+      </Text>
+      <Text style={styles.historyDate}>{item.date} at {item.time}</Text>
     </View>
   );
 
   return (
     <ScrollView style={styles.container}>
-      {/* Back Button and Title */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => {/* Handle back navigation */}}>
+        <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Journal</Text>
       </View>
 
-      {/* Tab Navigation */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'New Journal' && styles.activeTab]}
@@ -142,7 +163,6 @@ const journals = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Content based on active tab */}
       {activeTab === 'New Journal' ? (
         <View style={styles.newJournalContainer}>
           <Text style={styles.sectionTitle}>New Journal Entry</Text>
@@ -179,30 +199,28 @@ const journals = () => {
                 {shareWithCounselor && <View style={styles.checkboxInner} />}
               </View>
             </TouchableOpacity>
-            <Text style={styles.shareText}>Share this thought with my counselor</Text>
+            <Text style={styles.shareText}>Share this with my counselor</Text>
           </View>
-          {shareWithCounselor && (
-            <View style={styles.alertIndicator}>
-              <MaterialCommunityIcons name="alert" size={16} color="#fff" />
-              <Text style={styles.alertText}>A</Text>
-            </View>
-          )}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => {/* Handle cancel */}}>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => {}}>
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveEntry}>
-              <Text style={styles.buttonText}>Save Entry</Text>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSaveEntry} disabled={isSaving}>
+              <Text style={styles.buttonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
-        <FlatList
-          data={journalHistory}
-          renderItem={renderJournalItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.historyList}
-        />
+        loadingHistory ? (
+          <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
+        ) : (
+          <FlatList
+            data={journalHistory}
+            renderItem={renderJournalItem}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={styles.historyList}
+          />
+        )
       )}
     </ScrollView>
   );
@@ -214,6 +232,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E3F2FD',
   },
   header: {
+    marginTop: 37,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
@@ -251,6 +270,7 @@ const styles = StyleSheet.create({
     margin: 10,
     borderRadius: 10,
     elevation: 2,
+    height: 635,
   },
   sectionTitle: {
     fontSize: 18,
@@ -269,7 +289,7 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 5,
     padding: 10,
-    marginBottom: 10,
+    marginBottom: 20,
     fontSize: 16,
   },
   thoughtsInput: {
@@ -284,7 +304,7 @@ const styles = StyleSheet.create({
   moodSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   moodOption: {
     alignItems: 'center',
@@ -300,7 +320,7 @@ const styles = StyleSheet.create({
   shareContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   checkbox: {
     width: 20,
@@ -321,21 +341,6 @@ const styles = StyleSheet.create({
   shareText: {
     fontSize: 14,
     color: '#003087',
-  },
-  alertIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF4444',
-    padding: 2,
-    borderRadius: 10,
-    position: 'absolute',
-    right: 10,
-    top: 10,
-  },
-  alertText: {
-    color: '#fff',
-    fontSize: 10,
-    marginLeft: 2,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -361,6 +366,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   historyList: {
+    marginBottom: 70,
     padding: 10,
   },
   historyItem: {
@@ -369,7 +375,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 10,
     elevation: 1,
-    position: 'relative',
   },
   historyTitle: {
     fontSize: 16,

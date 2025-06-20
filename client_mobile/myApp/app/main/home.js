@@ -1,37 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  ScrollView,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@env';
 
-// Dummy doctor data
-const doctors = [
-  {
-    id: '1',
-    name: 'Dr. Smith',
-    rating: 4.5,
-    image: 'https://randomuser.me/api/portraits/men/1.jpg',
-  },
-  {
-    id: '2',
-    name: 'Dr. Jane',
-    rating: 4.7,
-    image: 'https://randomuser.me/api/portraits/women/2.jpg',
-  },
-  {
-    id: '3',
-    name: 'Dr. Adams',
-    rating: 1.2,
-    image: 'https://randomuser.me/api/portraits/men/3.jpg',
-  },
-  {
-    id: '4',
-    name: 'Dr. Maria',
-    rating: 4.9,
-    image: 'https://randomuser.me/api/portraits/women/4.jpg',
-  },
-];
+// Mood mapping
+const moodLevels = {
+  Bad: { height: 20, emoji: '😞' },
+  Low: { height: 40, emoji: '🙁' },
+  Neutral: { height: 60, emoji: '😐' },
+  Good: { height: 80, emoji: '🙂' },
+  Great: { height: 100, emoji: '😄' },
+};
 
-// Dummy appointment data (dynamic)
+// Dummy appointment data
 const appointments = [
   {
     id: '1',
@@ -51,50 +43,28 @@ const appointments = [
   },
 ];
 
-// Custom Header component
-const CustomHeader = ({ userData }) => {
-  return (
-    <View style={styles.header}>
-      <View style={styles.iconContainer}>
-        <View style={styles.logoContainer}>
-          <Image source={require('./../../assets/image/SaharaAppIcon.png')} style={styles.logo} />
-        </View>
-        <MaterialCommunityIcons name="magnify" size={40} color="#003087" />
-        <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" />
+const CustomHeader = ({ userData, onLogout }) => (
+  <View style={styles.header}>
+    <View style={styles.iconContainer}>
+      <View style={styles.logoContainer}>
+        <Image source={require('./../../assets/image/SaharaAppIcon.png')} style={styles.logo} />
+      </View>
+      <MaterialCommunityIcons name="magnify" size={40} color="#003087" />
+      <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" />
+      <TouchableOpacity onPress={onLogout}>
         <MaterialCommunityIcons name="logout" size={40} color="#003087" />
-      </View>
-      <View style={styles.separatorLine} />
-      <View style={styles.greetingContainer}>
-        {/* CHANGE: Updated greeting to use dynamic user data */}
-        <Text style={styles.greeting}>Hello {userData?.fullName || 'Aayusha'} 👋</Text>
-        <Text style={styles.message}>
-          "We're glad you're here 💙 You are doing your best, and that's more than enough. Keep going—you're not alone."
-        </Text>
-      </View>
+      </TouchableOpacity>
     </View>
-  );
-};
-
-// Star Rating
-const StarRating = ({ rating }) => {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5;
-  const empty = 5 - full - (half ? 1 : 0);
-
-  return (
-    <View style={{ flexDirection: 'row' }}>
-      {[...Array(full)].map((_, i) => (
-        <MaterialCommunityIcons key={'f' + i} name="star" size={16} color="#FFD700" />
-      ))}
-      {half && <MaterialCommunityIcons name="star-half-full" size={16} color="#FFD700" />}
-      {[...Array(empty)].map((_, i) => (
-        <MaterialCommunityIcons key={'e' + i} name="star-outline" size={16} color="#FFD700" />
-      ))}
+    <View style={styles.separatorLine} />
+    <View style={styles.greetingContainer}>
+      <Text style={styles.greeting}>Hello {userData?.fullName || 'Aayusha'} 👋</Text>
+      <Text style={styles.message}>
+        "We're glad you're here 💙 You are doing your best, and that's more than enough. Keep going—you're not alone."
+      </Text>
     </View>
-  );
-};
+  </View>
+);
 
-// Appointment Card
 const AppointmentCard = ({ appointment }) => (
   <View style={styles.appointmentCard}>
     <Image source={{ uri: appointment.image }} style={styles.appointmentImage} />
@@ -107,36 +77,148 @@ const AppointmentCard = ({ appointment }) => (
   </View>
 );
 
-// Doctor Card
-const DoctorCard = ({ doctor }) => (
-  <TouchableOpacity style={styles.doctorCard}>
-    <Image source={{ uri: doctor.image }} style={styles.doctorImage} />
-    <View style={styles.doctorRating}>
-      <StarRating rating={doctor.rating} />
-      <Text style={styles.ratingText}>{doctor.rating}/5</Text>
-    </View>
-      <Text style={styles.doctorName}>{doctor.name}</Text>
-  </TouchableOpacity>
-);
+const DoctorCard = ({ doctor }) => {
+  const imageUrl = `${API_BASE_URL}/uploads/profile_photos/${doctor.profilePhoto.filename}`;
+  return (
+    <TouchableOpacity style={styles.doctorCard}>
+      <Image source={{ uri: imageUrl }} style={styles.doctorImage} />
+      <Text style={styles.doctorName}>{doctor.fullName}</Text>
+      <Text style={styles.appointmentSpecialty}>{doctor.designation}</Text>
+      <Text style={styles.appointmentTime}>Rs {doctor.chargePerHour} /hr</Text>
+    </TouchableOpacity>
+  );
+};
 
-// Home Screen
+const MoodBar = ({ mood }) => {
+  const level = moodLevels[mood];
+  return (
+    <View style={{ alignItems: 'center', marginHorizontal: 8, height: 140, justifyContent: 'flex-end' }}>
+      <View
+        style={{
+          width: 30,
+          height: level.height,
+          backgroundColor: '#AB47BC',
+          borderRadius: 8,
+          marginBottom: 5,
+        }}
+      />
+      <Text style={{ fontSize: 18 }}>{level.emoji}</Text>
+    </View>
+  );
+};
+
+const MoodChart = ({ history }) => {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayMoodMap = {};
+  days.forEach(day => (dayMoodMap[day] = []));
+  history.forEach(entry => {
+    if (dayMoodMap[entry.day]) {
+      dayMoodMap[entry.day].push(entry.mood);
+    }
+  });
+
+  // Calculate average mood for each day
+  const moodsForDays = days.map(day => {
+    const moods = dayMoodMap[day];
+    const avgMood =
+      moods.length > 0
+        ? moods.reduce((acc, mood) => acc + Object.keys(moodLevels).indexOf(mood), 0) / moods.length
+        : null;
+    return avgMood != null ? Object.keys(moodLevels)[Math.round(avgMood)] : null;
+  });
+
+  return (
+    <View>
+      {/* Bars + emojis row */}
+      <View style={[styles.moodChartContainer, { height: 140 }]}>
+        {moodsForDays.map((mood, index) => (
+          <View key={days[index]} style={{ flex: 1, alignItems: 'center' }}>
+            {mood ? <MoodBar mood={mood} /> : <View style={{ height: 140 }} />}
+          </View>
+        ))}
+      </View>
+
+      {/* Days label row */}
+      <View style={styles.daysLabelContainer}>
+        {days.map(day => (
+          <Text key={day} style={styles.dayLabel}>
+            {day}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const { user } = useLocalSearchParams();
   const [userData, setUserData] = useState(null);
+  const [doctors, setDoctors] = useState([]);
+  const [moodHistory, setMoodHistory] = useState([]);
 
   useEffect(() => {
-    if (user) {
-      setUserData(JSON.parse(user));
-    }
+    if (user) setUserData(JSON.parse(user));
   }, [user]);
+
+  // Fetch functions
+  const fetchDoctors = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return Alert.alert('Error', 'User token not found');
+
+      const res = await fetch(`${API_BASE_URL}/api/users/counsellors`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const json = await res.json();
+      if (json.success) setDoctors(json.data.counsellors);
+      else Alert.alert('Failed to load doctors');
+    } catch (err) {
+      console.error('Doctor fetch error:', err);
+      Alert.alert('Error', 'Failed to fetch doctors');
+    }
+  }, []);
+
+  const fetchMoodHistory = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/users/mood/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.success) setMoodHistory(json.data.history);
+    } catch (err) {
+      console.error('Mood fetch error:', err);
+    }
+  }, []);
+
+  // Use focus effect to fetch data every time screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchDoctors();
+      fetchMoodHistory();
+    }, [fetchDoctors, fetchMoodHistory])
+  );
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('token');
+      router.replace('/auth/login');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
-      {/* CHANGE: Passed userData to CustomHeader */}
-      <CustomHeader userData={userData} />
+      <CustomHeader userData={userData} onLogout={handleLogout} />
       <View style={styles.content}>
-        {/* Mood Tracker Box */}
-        <View style={styles.moodBox} >
+        {/* Mood Tracker */}
+        <View style={styles.moodBox}>
           <View style={styles.headerRow}>
             <Text style={styles.sectionTitle}>Mood Tracker</Text>
             <TouchableOpacity style={styles.addJournalButton} onPress={() => router.push('/main/journals')}>
@@ -145,26 +227,11 @@ export default function HomeScreen() {
           </View>
           <Text>How are you feeling right now?</Text>
           <View style={styles.moodTracker}>
-            <View style={styles.moodOption}>
-              <Text>😞</Text>
-              <Text>Bad</Text>
-            </View>
-            <View style={styles.moodOption}>
-              <Text>🙁</Text>
-              <Text>Low</Text>
-            </View>
-            <View style={styles.moodOption}>
-              <Text>😐</Text>
-              <Text>Neutral</Text>
-            </View>
-            <View style={styles.moodOption}>
-              <Text>🙂</Text>
-              <Text>Good</Text>
-            </View>
-            <View style={styles.moodOption}>
-              <Text>😄</Text>
-              <Text>Great</Text>
-            </View>
+            {["😞", "🙁", "😐", "🙂", "😄"].map((emoji, i) => (
+              <View key={i} style={styles.moodOption}>
+                <Text>{emoji}</Text>
+              </View>
+            ))}
           </View>
           <TouchableOpacity style={styles.saveMoodButton} onPress={() => router.push('/main/journals')}>
             <Text style={styles.saveMoodText}>Save Today's Mood</Text>
@@ -174,9 +241,7 @@ export default function HomeScreen() {
         {/* My Appointments */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Appointments</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
+          <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
         </View>
         <FlatList
           data={appointments}
@@ -190,18 +255,28 @@ export default function HomeScreen() {
         {/* Book a Session */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Book a Session</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
+          <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
         </View>
         <FlatList
           data={doctors}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.email}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 5 }}
           renderItem={({ item }) => <DoctorCard doctor={item} />}
         />
+
+        {/* Mood History */}
+        <View style={[styles.moodBox, { marginTop: 20 }]}>
+          <Text style={styles.sectionTitle}>Mood History</Text>
+          <Text style={{ color: '#666', marginBottom: 10 }}>
+            You felt better {moodHistory.length} times this week.
+          </Text>
+          <MoodChart history={moodHistory} />
+          <TouchableOpacity style={styles.saveMoodButton}>
+            <Text style={styles.saveMoodText}>View Detailed Analysis</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
@@ -229,7 +304,6 @@ const styles = StyleSheet.create({
     top: -10,
     left: 10,
   },
-  
   logo: {
     width: 60,
     height: 60,
@@ -381,7 +455,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   doctorCard: {
-   
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
@@ -402,22 +475,26 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginBottom: 8,
   },
-  doctorRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 5,
-  },
   doctorName: {
     fontWeight: 'bold',
-
     fontSize: 16,
     color: '#003087',
-  
     textAlign: 'center',
   },
-  ratingText: {
-    marginLeft: 5,
-    fontSize: 14,
+  moodChartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    height: 140,
+  },
+  daysLabelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 4,
+  },
+  dayLabel: {
+    flex: 1,
+    textAlign: 'center',
+    fontWeight: 'bold',
     color: '#333',
   },
 });

@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import InputWithIcon from '../components/inputwithicons.js';
-
+import { API_BASE_URL } from '@env'; 
 const { width, height } = Dimensions.get('window');
 
 const Login = () => {
@@ -31,7 +31,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.1.88:5000/api/users/login', {
+      const response = await fetch(`${API_BASE_URL}/api/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 10,
-    marginTop: -150,
+    marginTop: -100,
   },
   subtitle: {
     fontSize: 16,

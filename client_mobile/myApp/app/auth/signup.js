@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, Dimensions, 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import InputWithIcon from '../components/inputwithicons.js';
+import { API_BASE_URL } from '@env'; 
 
-// Ensure you have set this in your .env file
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,7 +58,10 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.1.250:5000/api/users', { // Replace with your machine's IP or ngrok URL
+      // const response = await fetch('http://192.168.1.250:5000/api/users', { 
+        const response = await fetch(`${API_BASE_URL}/api/users`, {
+
+      // // Replace with your machine's IP or ngrok URL
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +185,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: '#E3F2FD',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -221,7 +225,7 @@ const styles = StyleSheet.create({
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 10,
   },
   line: {
     flex: 1,

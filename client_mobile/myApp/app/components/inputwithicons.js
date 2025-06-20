@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 55,
+    height: 50,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 20,
@@ -118,8 +118,9 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: '100%',
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
+    fontWeight: 'bold',
   },
   picker: {
     flex: 1,
@@ -130,10 +131,11 @@ const styles = StyleSheet.create({
     
   },
   pickerItem: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
     backgroundColor: '#fff', // Visible background for dropdown options
     textAlign: 'center', // Center the dropdown option text
+  
   },
   passwordIcon: {
     paddingHorizontal: 5,

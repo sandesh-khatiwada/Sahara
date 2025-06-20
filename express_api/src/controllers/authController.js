@@ -359,6 +359,33 @@ export const login = async (req, res) => {
 
     // Check if email is verified
     if (!account.emailVerified && role === 'User') {
+
+    const otpRecord = await OTP.findOne({ user: accountResponse._id });
+    if (otpRecord) {
+        console.log("OTP record found and deleted");
+      await OTP.deleteOne({ _id: otpRecord._id });
+    }
+
+    // Generate and save OTP
+    const otp = generateOTP();
+    const hashedOTP = await hashOTP(otp);
+    await OTP.create({
+      user: accountResponse._id,
+      hashedOTP,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
+    });
+
+    // Send OTP via email
+    try {
+      await sendOTPEmail(email, otp);
+    } catch (emailError) {
+      console.error('Error sending OTP email:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Error sending OTP email'
+      });
+    }
+    
       return res.status(200).json({
         success: true,
         message: 'Login Successfull, Email not verified',

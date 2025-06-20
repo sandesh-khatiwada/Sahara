@@ -37,7 +37,7 @@ const Otp = () => {
         return router.push('/auth/signup');
       }
 
-      const response = await fetch('http://192.168.1.88:5000/api/users/otp/verification', {
+      const response = await fetch('http://192.168.18.142:5000/api/users/otp/verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email, otp: otpCode })
@@ -81,7 +81,7 @@ const Otp = () => {
         return router.push('/auth/signup');
       }
 
-      const response = await fetch('http://192.168.1.88:5000/api/users/otp/resend', {
+      const response = await fetch('http://192.168.18.142:5000/api/users/otp/resend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email })

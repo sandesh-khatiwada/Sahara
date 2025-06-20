@@ -57,7 +57,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.1.250:5000/api/users', { // Replace with your machine's IP or ngrok URL
+      const response = await fetch('http://192.168.18.142:5000/api/users', { // Replace with your machine's IP or ngrok URL
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

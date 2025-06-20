@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@env';
 
 const { height } = Dimensions.get('window');
 
@@ -22,7 +23,6 @@ const ResetOtp = () => {
   const [countdown, setCountdown] = useState(60);
   const otpInputs = useRef([]);
 
-  // Countdown timer for resend OTP
   useEffect(() => {
     let timer;
     if (countdown > 0) {
@@ -40,19 +40,40 @@ const ResetOtp = () => {
 
     setLoading(true);
     try {
-      // Simulate OTP verification (no API call)
-      Alert.alert('Success', 'OTP verified successfully!', [
-        { text: 'OK', onPress: () => router.push('/auth/login') },
-      ]);
+      const storedUser = await AsyncStorage.getItem('user');
+      const { email } = storedUser ? JSON.parse(storedUser) : {};
+
+      if (!email) {
+        Alert.alert('Error', 'Email not found. Please try resetting again.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/users/password-reset/otp/verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: otpCode }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        await AsyncStorage.removeItem('user');
+        Alert.alert('Success', data.message, [
+          { text: 'OK', onPress: () => router.replace('/auth/login') },
+        ]);
+      } else {
+        let errorMsg = data.message || 'OTP verification failed.';
+        if (response.status === 400) {
+          errorMsg = 'Invalid or expired OTP.';
+        } else if (response.status === 404) {
+          errorMsg = 'User not found.';
+        }
+        Alert.alert('Verification Failed', errorMsg);
+      }
     } catch (error) {
-      Alert.alert(
-        'Verification Failed',
-        error.message || 'An error occurred during verification',
-        [
-          { text: 'Try Again' },
-          { text: 'Resend OTP', onPress: handleResendOTP },
-        ]
-      );
+      console.error('OTP verification error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -63,15 +84,36 @@ const ResetOtp = () => {
 
     setResendLoading(true);
     try {
-      // Simulate resend OTP (no API call)
-      setTimeout(() => {
-        setCountdown(60); // Reset countdown
+      const storedUser = await AsyncStorage.getItem('user');
+      const { email } = storedUser ? JSON.parse(storedUser) : {};
+
+      if (!email) {
+        Alert.alert('Error', 'Email not found. Please try again.');
         setResendLoading(false);
+        return;
+      }
+
+      // Call the same endpoint or correct resend endpoint
+      // Assuming same endpoint to initiate OTP resend:
+      const response = await fetch(`${API_BASE_URL}/api/users/password/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword: 'placeholder' }), // You may need to store newPassword temporarily or adjust API accordingly
+      });
+
+      // Or if you have a dedicated resend OTP endpoint, replace the above fetch URL and body
+
+      if (response.ok) {
+        setCountdown(60);
         Alert.alert('Success', 'New OTP has been sent to your email');
-      }, 1000); // Simulate a 1-second delay
+      } else {
+        const data = await response.json();
+        Alert.alert('Error', data.message || 'Failed to resend OTP');
+      }
     } catch (error) {
-      setResendLoading(false);
       Alert.alert('Error', error.message || 'Failed to resend OTP');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -82,9 +124,9 @@ const ResetOtp = () => {
     setOtp(newOtp);
 
     if (numericValue && index < 5) {
-      otpInputs.current[index + 1].focus();
+      otpInputs.current[index + 1]?.focus();
     } else if (!numericValue && index > 0) {
-      otpInputs.current[index - 1].focus();
+      otpInputs.current[index - 1]?.focus();
     }
   };
 

@@ -13,7 +13,7 @@ const doctors = [
   {
     id: '2',
     name: 'Dr. Jane',
-    rating: 4.8,
+    rating: 4.7,
     image: 'https://randomuser.me/api/portraits/women/2.jpg',
   },
   {
@@ -30,6 +30,26 @@ const doctors = [
   },
 ];
 
+// Dummy appointment data (dynamic)
+const appointments = [
+  {
+    id: '1',
+    doctorName: 'Dr. Nanathya Regmi',
+    date: 'August 12 2025',
+    time: '10:00am',
+    image: 'https://randomuser.me/api/portraits/women/5.jpg',
+    specialty: 'Counseling Psychologist | 12yrs Exp',
+  },
+  {
+    id: '2',
+    doctorName: 'Dr. John Doe',
+    date: 'August 13 2025',
+    time: '2:00pm',
+    image: 'https://randomuser.me/api/portraits/men/6.jpg',
+    specialty: 'Therapist | 8yrs Exp',
+  },
+];
+
 // Custom Header component
 const CustomHeader = () => {
   return (
@@ -41,7 +61,6 @@ const CustomHeader = () => {
         <MaterialCommunityIcons name="magnify" size={40} color="#003087" />
         <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" />
         <MaterialCommunityIcons name="account-circle" size={40} color="#003087" />
-        {/* <Image source={require('../../assets/image/Therapist_client.png')} style={styles.logo} /> */}
       </View>
       <View style={styles.separatorLine} />
       <View style={styles.greetingContainer}>
@@ -73,12 +92,28 @@ const StarRating = ({ rating }) => {
   );
 };
 
+// Appointment Card
+const AppointmentCard = ({ appointment }) => (
+  <View style={styles.appointmentCard}>
+    <Image source={{ uri: appointment.image }} style={styles.appointmentImage} />
+    <View style={styles.appointmentDetails}>
+      <Text style={styles.appointmentDate}>{appointment.date}</Text>
+      <Text style={styles.appointmentTime}>{appointment.time}</Text>
+      <Text style={styles.appointmentDoctor}>{appointment.doctorName}</Text>
+      <Text style={styles.appointmentSpecialty}>{appointment.specialty}</Text>
+    </View>
+  </View>
+);
+
 // Doctor Card
 const DoctorCard = ({ doctor }) => (
   <TouchableOpacity style={styles.doctorCard}>
     <Image source={{ uri: doctor.image }} style={styles.doctorImage} />
-    <Text style={styles.doctorName}>{doctor.name}</Text>
-    <StarRating rating={doctor.rating} />
+    <View style={styles.doctorRating}>
+      <StarRating rating={doctor.rating} />
+      <Text style={styles.ratingText}>{doctor.rating}/5</Text>
+    </View>
+      <Text style={styles.doctorName}>{doctor.name}</Text>
   </TouchableOpacity>
 );
 
@@ -90,7 +125,12 @@ export default function HomeScreen() {
       <View style={styles.content}>
         {/* Mood Tracker Box */}
         <View style={styles.moodBox}>
-          <Text style={styles.sectionTitle}>Mood Tracker</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.sectionTitle}>Mood Tracker</Text>
+            <TouchableOpacity style={styles.addJournalButton}>
+              <Text style={styles.addJournalText}>Add Journal</Text>
+            </TouchableOpacity>
+          </View>
           <Text>How are you feeling right now?</Text>
           <View style={styles.moodTracker}>
             <View style={styles.moodOption}>
@@ -119,8 +159,29 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* My Appointments */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>My Appointments</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={appointments}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 5 }}
+          renderItem={({ item }) => <AppointmentCard appointment={item} />}
+        />
+
         {/* Book a Session */}
-        <Text style={styles.sectionTitle}>Book a Session</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Book a Session</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
         <FlatList
           data={doctors}
           keyExtractor={(item) => item.id}
@@ -129,14 +190,6 @@ export default function HomeScreen() {
           contentContainerStyle={{ paddingHorizontal: 5 }}
           renderItem={({ item }) => <DoctorCard doctor={item} />}
         />
-
-        {/* Appointments */}
-        <Text style={styles.sectionTitle}>My Appointments </Text>
-        {Array(40)
-          .fill()
-          .map((_, i) => (
-            <Text key={i}>Scrollable content item {i + 1}</Text>
-          ))}
       </View>
     </ScrollView>
   );
@@ -145,6 +198,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     marginTop: 35,
+    marginBottom: 70,
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
@@ -163,6 +217,7 @@ const styles = StyleSheet.create({
     top: -10,
     left: 10,
   },
+  
   logo: {
     width: 60,
     height: 60,
@@ -216,6 +271,12 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   moodTracker: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -242,7 +303,73 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  addJournalButton: {
+    backgroundColor: '#AB47BC',
+    padding: 8,
+    borderRadius: 10,
+    alignSelf: 'flex-end',
+  },
+  addJournalText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  seeAllText: {
+    color: '#AB47BC',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  appointmentCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 10,
+    marginRight: 15,
+    marginVertical: 10,
+    width: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appointmentImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 10,
+  },
+  appointmentDetails: {
+    flex: 1,
+  },
+  appointmentDate: {
+    fontSize: 14,
+    color: '#666',
+  },
+  appointmentTime: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  appointmentDoctor: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#003087',
+  },
+  appointmentSpecialty: {
+    fontSize: 12,
+    color: '#666',
+  },
   doctorCard: {
+   
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
@@ -250,7 +377,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     alignItems: 'center',
     width: 150,
-    height: 190,
+    height: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -263,11 +390,22 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginBottom: 8,
   },
+  doctorRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
   doctorName: {
     fontWeight: 'bold',
+
     fontSize: 16,
     color: '#003087',
-    marginBottom: 4,
+  
     textAlign: 'center',
+  },
+  ratingText: {
+    marginLeft: 5,
+    fontSize: 14,
+    color: '#333',
   },
 });

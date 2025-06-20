@@ -327,13 +327,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check if email is verified
-    if (!account.emailVerified && role === 'User') {
-      return res.status(403).json({
-        success: false,
-        message: 'Please verify your email before logging in'
-      });
-    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -363,7 +356,21 @@ export const login = async (req, res) => {
       delete accountResponse.documents;
     }
 
-    res.status(200).json({
+
+    // Check if email is verified
+    if (!account.emailVerified && role === 'User') {
+      return res.status(200).json({
+        success: true,
+        message: 'Login Successfull, Email not verified',
+        redirectTo: '/auth/otp',
+        data: {
+        [role]: accountResponse,
+        token
+      }
+      });
+    }
+
+    return res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {

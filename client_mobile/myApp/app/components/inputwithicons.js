@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 
 const InputWithIcon = ({
   label,
@@ -16,6 +17,10 @@ const InputWithIcon = ({
   editable,
   error,
   onFocus,
+  isDropdown,
+  items,
+  selectedValue,
+  onValueChange,
 }) => {
   const inputRef = useRef(null);
 
@@ -30,20 +35,38 @@ const InputWithIcon = ({
           style={styles.icon}
         />
         <View style={styles.separator} />
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          placeholder={placeholder}
-          placeholderTextColor="#666"
-          value={value}
-          onChangeText={onChangeText}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          editable={editable}
-          onFocus={onFocus}
-        />
-        {showPassword !== undefined && (
+        {isDropdown ? (
+          <Picker
+            selectedValue={selectedValue}
+            onValueChange={onValueChange}
+            style={styles.picker}
+            dropdownIconColor="#666"
+          >
+            {items.map((item) => (
+              <Picker.Item
+                key={item.value}
+                label={item.label}
+                value={item.value}
+                style={styles.pickerItem}
+              />
+            ))}
+          </Picker>
+        ) : (
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            placeholder={placeholder}
+            placeholderTextColor="#666"
+            value={value}
+            onChangeText={onChangeText}
+            secureTextEntry={secureTextEntry}
+            keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+            editable={editable}
+            onFocus={onFocus}
+          />
+        )}
+        {showPassword !== undefined && !isDropdown && (
           <TouchableOpacity style={styles.passwordIcon} onPress={togglePassword}>
             <MaterialCommunityIcons
               name={showPassword ? 'eye-off' : 'eye'}
@@ -73,7 +96,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 50,
+    height: 55,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 20,
@@ -96,6 +119,21 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
+    color: '#333',
+  },
+  picker: {
+    flex: 1,
+    height: '100%',
+    color: '#333',
+    textAlign: 'center', // Center the selected text
+    justifyContent: 'center', // Center vertically
+    
+  },
+  pickerItem: {
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#fff', // Visible background for dropdown options
+    textAlign: 'center', // Center the dropdown option text
   },
   passwordIcon: {
     paddingHorizontal: 5,

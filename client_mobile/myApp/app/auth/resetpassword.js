@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ImageBackground,
   StyleSheet,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,26 +17,73 @@ const { height } = Dimensions.get('window');
 
 const ResetOtp = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [countdown, setCountdown] = useState(60);
   const otpInputs = useRef([]);
 
-  const handleSubmit = () => {
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  const handleSubmit = async () => {
     const otpCode = otp.join('');
-    if (otpCode.length === 6) {
-      router.push('/auth/login');
-    } else {
-      AsyncStorage.removeItem('user');
-      router.push('/auth/changepassword');
+    if (otpCode.length !== 6) {
+      Alert.alert('Error', 'Please enter a complete 6-digit code.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Simulate OTP verification (no API call)
+      Alert.alert('Success', 'OTP verified successfully!', [
+        { text: 'OK', onPress: () => router.push('/auth/login') },
+      ]);
+    } catch (error) {
+      Alert.alert(
+        'Verification Failed',
+        error.message || 'An error occurred during verification',
+        [
+          { text: 'Try Again' },
+          { text: 'Resend OTP', onPress: handleResendOTP },
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (countdown > 0) return;
+
+    setResendLoading(true);
+    try {
+      // Simulate resend OTP (no API call)
+      setTimeout(() => {
+        setCountdown(60); // Reset countdown
+        setResendLoading(false);
+        Alert.alert('Success', 'New OTP has been sent to your email');
+      }, 1000); // Simulate a 1-second delay
+    } catch (error) {
+      setResendLoading(false);
+      Alert.alert('Error', error.message || 'Failed to resend OTP');
     }
   };
 
   const handleOtpChange = (text, index) => {
+    const numericValue = text.replace(/[^0-9]/g, '');
     const newOtp = [...otp];
-    newOtp[index] = text;
+    newOtp[index] = numericValue.slice(0, 1);
     setOtp(newOtp);
 
-    if (text && index < 5) {
+    if (numericValue && index < 5) {
       otpInputs.current[index + 1].focus();
-    } else if (!text && index > 0) {
+    } else if (!numericValue && index > 0) {
       otpInputs.current[index - 1].focus();
     }
   };
@@ -53,24 +102,47 @@ const ResetOtp = () => {
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              style={styles.otpInput}
+              style={[
+                styles.otpInput,
+                digit && styles.otpInputFilled,
+                loading && styles.otpInputDisabled,
+              ]}
               value={digit}
               onChangeText={(text) => handleOtpChange(text, index)}
-              keyboardType="numeric"
+              keyboardType="number-pad"
               maxLength={1}
               ref={(ref) => (otpInputs.current[index] = ref)}
+              editable={!loading}
+              selectTextOnFocus
             />
           ))}
         </View>
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Submit</Text>
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.disabledButton]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitButtonText}>Submit</Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/auth/resendotp')}>
+        <TouchableOpacity
+          onPress={handleResendOTP}
+          disabled={countdown > 0 || resendLoading}
+        >
           <View style={styles.resendContainer}>
-            <Text style={styles.resendPrompt}>Did not Receive OTP? </Text>
-            <Text style={styles.resendText}>Resend</Text>
+            <Text style={styles.resendPrompt}>Did not receive code? </Text>
+            {countdown > 0 ? (
+              <Text style={styles.resendCountdown}>Resend in {countdown}s</Text>
+            ) : resendLoading ? (
+              <ActivityIndicator size="small" color="#007AFF" />
+            ) : (
+              <Text style={styles.resendText}>Resend OTP</Text>
+            )}
           </View>
         </TouchableOpacity>
       </View>
@@ -89,19 +161,21 @@ const styles = StyleSheet.create({
   },
   formWrapper: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     backgroundColor: '#E3F2FD',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     marginTop: -10,
     paddingTop: 40,
-    paddingHorizontal: 20,
-    alignItems: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 10,
+    marginTop: -230,
   },
   subtitle: {
     fontSize: 16,
@@ -113,17 +187,25 @@ const styles = StyleSheet.create({
   otpWrapper: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '95%',
+    width: '90%',
     marginBottom: 40,
   },
   otpInput: {
-    width: 40,
-    height: 50,
+    width: 45,
+    height: 55,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: 20,
+    backgroundColor: '#fff',
+  },
+  otpInputFilled: {
+    borderColor: '#007AFF',
+    backgroundColor: '#f0f8ff',
+  },
+  otpInputDisabled: {
+    backgroundColor: '#f5f5f5',
   },
   submitButton: {
     width: '95%',
@@ -132,6 +214,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 20,
+  },
+  disabledButton: {
+    backgroundColor: '#99C2FF',
   },
   submitButtonText: {
     color: '#fff',
@@ -140,16 +226,20 @@ const styles = StyleSheet.create({
   },
   resendContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 30,
+    alignItems: 'center',
+    marginTop: 20,
   },
   resendPrompt: {
-    color: 'black',
-    fontWeight: '500',
+    color: '#666',
     fontSize: 16,
   },
   resendText: {
     color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  resendCountdown: {
+    color: '#999',
     fontSize: 16,
   },
 });

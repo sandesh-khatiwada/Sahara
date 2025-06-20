@@ -19,7 +19,7 @@ const ChangePassword = () => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
-    const handleSubmit = async () => {
+    const handleSave = async () => {
         try {
             await AsyncStorage.setItem('user', JSON.stringify({}));
             router.replace('/auth/resetpassword');
@@ -68,7 +68,7 @@ const ChangePassword = () => {
                     togglePassword={() => setShowPassword(!showPassword)}
                 />
 
-                <TouchableOpacity style={styles.saveButton} onPress={handleSubmit}>
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                     <Text style={styles.saveButtonText}>Save Changes</Text>
                 </TouchableOpacity>
             </View>

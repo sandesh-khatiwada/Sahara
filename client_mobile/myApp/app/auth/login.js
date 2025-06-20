@@ -50,27 +50,38 @@ const Login = () => {
       }
 
       // Store user data and token
-      await AsyncStorage.setItem('user', JSON.stringify({
-        email: data.data[role].email,
+      const userData = {
+        _id: data.data[role]._id,
         fullName: data.data[role].fullName,
-        id: data.data[role]._id,
+        email: data.data[role].email,
+        emailVerified: role === 'User' ? data.data[role].emailVerified : true, // Only for User
         role,
-        token: data.data.token
-      }));
+        token: data.data.token,
+        ...(role === 'Counsellor' && { // Additional fields for Counsellor if present
+          designation: data.data[role].designation,
+          phone: data.data[role].phone,
+          chargePerHour: data.data[role].chargePerHour,
+        }),
+        createdAt: data.data[role].createdAt,
+        updatedAt: data.data[role].updatedAt,
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
 
       // Handle email verification for users
       if (role === 'User' && !data.data.User.emailVerified) {
         router.replace('/auth/otp');
-        Alert.alert('Verification Needed', 'Please verify your email first');
+        Alert.alert('Verification Needed', 'Please verify your email before logging in');
         return;
       }
 
-      // Navigate to appropriate screen based on role
-      if (role === 'User') {
-        router.replace('/main/home');
-      } else {
-        router.replace('/main/home');
-      }
+      // Navigate to HomeScreen with params
+      // CHANGE: Added params to router.replace to pass user data
+      router.replace({
+        pathname: '/main/home',
+        params: {
+          user: JSON.stringify(userData),
+        },
+      });
 
     } catch (error) {
       console.error('Login error:', error);
@@ -78,12 +89,11 @@ const Login = () => {
       // Handle specific error cases
       if (error.message.includes('verify your email')) {
         router.replace('/auth/otp');
+      } else if (error.message.includes('Invalid credentials')) {
+        Alert.alert('Login Failed', 'Invalid credentials');
+      } else {
+        Alert.alert('Login Failed', error.message || 'An error occurred during login');
       }
-      
-      Alert.alert(
-        'Login Failed', 
-        error.message || 'An error occurred during login'
-      );
     } finally {
       setLoading(false);
     }

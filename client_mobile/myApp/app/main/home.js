@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
 
 // Dummy doctor data
 const doctors = [
@@ -51,7 +52,7 @@ const appointments = [
 ];
 
 // Custom Header component
-const CustomHeader = () => {
+const CustomHeader = ({ userData }) => {
   return (
     <View style={styles.header}>
       <View style={styles.iconContainer}>
@@ -60,11 +61,12 @@ const CustomHeader = () => {
         </View>
         <MaterialCommunityIcons name="magnify" size={40} color="#003087" />
         <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" />
-        <MaterialCommunityIcons name="account-circle" size={40} color="#003087" />
+        <MaterialCommunityIcons name="logout" size={40} color="#003087" />
       </View>
       <View style={styles.separatorLine} />
       <View style={styles.greetingContainer}>
-        <Text style={styles.greeting}>Hello Aayusha 👋</Text>
+        {/* CHANGE: Updated greeting to use dynamic user data */}
+        <Text style={styles.greeting}>Hello {userData?.fullName || 'Aayusha'} 👋</Text>
         <Text style={styles.message}>
           "We're glad you're here 💙 You are doing your best, and that's more than enough. Keep going—you're not alone."
         </Text>
@@ -119,15 +121,25 @@ const DoctorCard = ({ doctor }) => (
 
 // Home Screen
 export default function HomeScreen() {
+  const { user } = useLocalSearchParams();
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      setUserData(JSON.parse(user));
+    }
+  }, [user]);
+
   return (
     <ScrollView style={styles.container}>
-      <CustomHeader />
+      {/* CHANGE: Passed userData to CustomHeader */}
+      <CustomHeader userData={userData} />
       <View style={styles.content}>
         {/* Mood Tracker Box */}
-        <View style={styles.moodBox}>
+        <View style={styles.moodBox} >
           <View style={styles.headerRow}>
             <Text style={styles.sectionTitle}>Mood Tracker</Text>
-            <TouchableOpacity style={styles.addJournalButton}>
+            <TouchableOpacity style={styles.addJournalButton} onPress={() => router.push('/main/journals')}>
               <Text style={styles.addJournalText}>Add Journal</Text>
             </TouchableOpacity>
           </View>
@@ -154,7 +166,7 @@ export default function HomeScreen() {
               <Text>Great</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.saveMoodButton}>
+          <TouchableOpacity style={styles.saveMoodButton} onPress={() => router.push('/main/journals')}>
             <Text style={styles.saveMoodText}>Save Today's Mood</Text>
           </TouchableOpacity>
         </View>

@@ -25,7 +25,16 @@ import {
   Timeline as TimelineIcon,
   Assessment as AssessmentIcon,
   Speed as SpeedIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  PersonAdd as PersonAddIcon,
+  Analytics as AnalyticsIcon,
+  Settings as SettingsIcon,
+  CenterFocusStrong as TargetIcon,
+  FlashOn as FlashOnIcon,
+  Stars as StarsIcon,
+  Error as ErrorIcon,
+  Public as PublicIcon,
+  StarRate as StarRateIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -46,8 +55,8 @@ import {
 } from 'recharts';
 import axios from 'axios';
 
-// Glassmorphism styled components
-const GlassCard = motion(Paper);
+// Glassmorphism styled components using motion components
+const MotionPaper = motion(Paper);
 
 const StatCard = ({ title, value, icon, color, trend, loading, delay = 0, subtitle }) => {
   const theme = useTheme();
@@ -63,7 +72,7 @@ const StatCard = ({ title, value, icon, color, trend, loading, delay = 0, subtit
         boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
       }}
     >
-      <GlassCard
+      <MotionPaper
         elevation={0}
         sx={{
           p: 3,
@@ -195,7 +204,7 @@ const StatCard = ({ title, value, icon, color, trend, loading, delay = 0, subtit
             />
           </motion.div>
         )}
-      </GlassCard>
+      </MotionPaper>
     </motion.div>
   );
 };
@@ -209,7 +218,7 @@ const ChartCard = ({ title, children, height = 300, delay = 0 }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: delay * 0.1, duration: 0.6 }}
     >
-      <GlassCard
+      <MotionPaper
         elevation={0}
         sx={{
           p: 3,
@@ -234,7 +243,7 @@ const ChartCard = ({ title, children, height = 300, delay = 0 }) => {
         <Box sx={{ height, width: '100%' }}>
           {children}
         </Box>
-      </GlassCard>
+      </MotionPaper>
     </motion.div>
   );
 };
@@ -479,15 +488,18 @@ const Home = () => {
             border: '1px solid rgba(0, 0, 0, 0.05)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
           }}>
-            <Typography variant="h6" sx={{ color: '#1e293b', mb: 2, fontWeight: 600 }}>
-              🎯 Quick Actions
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <TargetIcon sx={{ color: '#1e293b', fontSize: 24 }} />
+              <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                Quick Actions
+              </Typography>
+            </Box>
             <Grid container spacing={2}>
               {[
-                { label: 'Add Counsellor', icon: '👨‍⚕️', color: '#10b981' },
-                { label: 'View Users', icon: '👥', color: '#3b82f6' },
-                { label: 'Analytics', icon: '📊', color: '#f59e0b' },
-                { label: 'Settings', icon: '⚙️', color: '#8b5cf6' }
+                { label: 'Add Counsellor', icon: <PersonAddIcon />, color: '#10b981' },
+                { label: 'View Users', icon: <PeopleIcon />, color: '#3b82f6' },
+                { label: 'Analytics', icon: <AnalyticsIcon />, color: '#f59e0b' },
+                { label: 'Settings', icon: <SettingsIcon />, color: '#8b5cf6' }
               ].map((action, index) => (
                 <Grid item xs={6} sm={3} key={index}>
                   <Box sx={{
@@ -506,7 +518,9 @@ const Home = () => {
                   }}
                   onClick={() => handleQuickAction(action.label)}
                   >
-                    <Typography variant="h4" sx={{ mb: 1 }}>{action.icon}</Typography>
+                    <Box sx={{ mb: 1, color: action.color }}>
+                      {React.cloneElement(action.icon, { sx: { fontSize: 32 } })}
+                    </Box>
                     <Typography variant="body2" sx={{ color: '#475569', fontWeight: 500 }}>
                       {action.label}
                     </Typography>
@@ -663,7 +677,16 @@ const Home = () => {
         {/* Activity Chart */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12}>
-            <ChartCard title="📈 Daily Activity Pattern" height={300} delay={6}>
+            <ChartCard 
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TrendingUpIcon sx={{ color: '#1e293b', fontSize: 20 }} />
+                  <span>Daily Activity Pattern</span>
+                </Box>
+              } 
+              height={300} 
+              delay={6}
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={activityData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
@@ -707,7 +730,7 @@ const Home = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.7, duration: 0.6 }}
             >
-              <GlassCard
+              <MotionPaper
                 elevation={0}
                 sx={{
                   p: 3,
@@ -770,7 +793,7 @@ const Home = () => {
                     </motion.div>
                   ))}
                 </Box>
-              </GlassCard>
+              </MotionPaper>
             </motion.div>
           </Grid>
           <Grid item xs={12} md={6}>
@@ -779,7 +802,7 @@ const Home = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.8, duration: 0.6 }}
             >
-              <GlassCard
+              <MotionPaper
                 elevation={0}
                 sx={{
                   p: 3,
@@ -791,9 +814,12 @@ const Home = () => {
                   height: '400px'
                 }}
               >
-                <Typography variant="h6" sx={{ color: '#1e293b', mb: 3, fontWeight: 600 }}>
-                  ⚡ System Status
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                  <FlashOnIcon sx={{ color: '#1e293b', fontSize: 24 }} />
+                  <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                    System Status
+                  </Typography>
+                </Box>
                 <Box>
                   {[
                     { name: 'Server Health', status: 'Excellent', percentage: 98, color: '#4CAF50' },
@@ -837,7 +863,7 @@ const Home = () => {
                     </motion.div>
                   ))}
                 </Box>
-              </GlassCard>
+              </MotionPaper>
             </motion.div>
           </Grid>
         </Grid>
@@ -857,20 +883,23 @@ const Home = () => {
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
             textAlign: 'center'
           }}>
-            <Typography variant="h6" sx={{ color: '#1e293b', mb: 2, fontWeight: 600 }}>
-              🌟 Platform Impact
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, justifyContent: 'center' }}>
+              <StarsIcon sx={{ color: '#1e293b', fontSize: 24 }} />
+              <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                Platform Impact
+              </Typography>
+            </Box>
             <Grid container spacing={3}>
               {[
-                { label: 'Lives Impacted', value: `${Math.floor((stats.totalUsers || 68) * 1.5)}+`, icon: '❤️' },
-                { label: 'Sessions Completed', value: `${Math.floor((stats.totalUsers || 68) * 0.8)}+`, icon: '✅' },
-                { label: 'Countries Served', value: '15+', icon: '🌍' },
-                { label: 'Satisfaction Rate', value: `${Math.floor(88 + Math.random() * 10)}%`, icon: '⭐' }
+                { label: 'Lives Impacted', value: `${Math.floor((stats.totalUsers || 68) * 1.5)}+`, icon: <PeopleIcon /> },
+                { label: 'Sessions Completed', value: `${Math.floor((stats.totalUsers || 68) * 0.8)}+`, icon: <AssessmentIcon /> },
+                { label: 'Countries Served', value: '15+', icon: <PublicIcon /> },
+                { label: 'Satisfaction Rate', value: `${Math.floor(88 + Math.random() * 10)}%`, icon: <StarRateIcon /> }
               ].map((impact, index) => (
                 <Grid item xs={6} md={3} key={index}>
-                  <Typography variant="h3" sx={{ fontSize: '2rem', mb: 1 }}>
-                    {impact.icon}
-                  </Typography>
+                  <Box sx={{ color: '#475569', mb: 1 }}>
+                    {React.cloneElement(impact.icon, { sx: { fontSize: 36 } })}
+                  </Box>
                   <Typography variant="h5" sx={{ color: '#1e293b', fontWeight: 700, mb: 0.5 }}>
                     {impact.value}
                   </Typography>

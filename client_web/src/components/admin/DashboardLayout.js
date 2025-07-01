@@ -92,10 +92,11 @@ const DashboardLayout = ({ children }) => {
           display: 'flex',
           alignItems: 'center',
           gap: 2,
-          background: 'linear-gradient(135deg, #1c2912 0%, #2d4a22 100%)',
+          background: 'linear-gradient(135deg, hsl(219, 48%, 8%) 0%, hsl(219, 48%, 12%) 100%)',
           color: 'white',
           position: 'relative',
           overflow: 'hidden',
+          boxShadow: '0 8px 25px rgba(0, 0, 0, 0.12)',
           '&::before': {
             content: '""',
             position: 'absolute',
@@ -103,8 +104,8 @@ const DashboardLayout = ({ children }) => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(10px)',
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)',
           }
         }}
       >
@@ -115,14 +116,15 @@ const DashboardLayout = ({ children }) => {
             style={{ 
               height: '45px',
               width: 'auto',
-              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+              opacity: 0.95
             }} 
           />
           <Box>
-            <Typography variant="h5" noWrap component="div" sx={{ fontWeight: 700, fontSize: '1.4rem', color: '#d4edda' }}>
+            <Typography variant="h5" noWrap component="div" sx={{ fontWeight: 700, fontSize: '1.4rem', color: '#f1f5f9' }}>
               Sahara
             </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.9, fontSize: '0.8rem', color: '#a5b8a8' }}>
+            <Typography variant="caption" sx={{ opacity: 0.85, fontSize: '0.8rem', color: '#cbd5e1' }}>
               Admin Dashboard
             </Typography>
           </Box>
@@ -130,10 +132,30 @@ const DashboardLayout = ({ children }) => {
       </Box>
       <Box sx={{ 
         flex: 1, 
-        background: 'linear-gradient(180deg, #1c2912 0%, #2d4a22 100%)',
-        backdropFilter: 'blur(20px)'
+        background: 'linear-gradient(180deg, hsl(219, 48%, 8%) 0%, hsl(219, 48%, 12%) 35%, hsl(219, 48%, 16%) 100%)',
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(45deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 100%)',
+          pointerEvents: 'none',
+        },
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(circle at 20% 80%, rgba(59,130,246,0.1) 0%, transparent 50%)',
+          pointerEvents: 'none',
+        }
       }}>
-        <List sx={{ px: 3, py: 3 }}>
+        <List sx={{ px: 3, py: 3, position: 'relative', zIndex: 1 }}>
           {menuItems.map((item, index) => (
             <ListItem key={item.text} disablePadding sx={{ mb: 2 }}>
               <ListItemButton
@@ -147,27 +169,37 @@ const DashboardLayout = ({ children }) => {
                   px: 3,
                   py: 1.5,
                   background: location.pathname === item.path 
-                    ? 'linear-gradient(135deg, #3d5a2f 0%, #2d4a22 100%)' 
-                    : 'rgba(255, 255, 255, 0.08)',
+                    ? 'rgba(255, 255, 255, 0.15)' 
+                    : 'rgba(255, 255, 255, 0.05)',
                   backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: location.pathname === item.path ? '#d4edda' : '#c8d6cb',
-                  transition: 'all 0.3s ease',
+                  border: location.pathname === item.path 
+                    ? '1px solid rgba(255, 255, 255, 0.25)' 
+                    : '1px solid rgba(255, 255, 255, 0.08)',
+                  color: location.pathname === item.path ? '#ffffff' : '#e2e8f0',
+                  boxShadow: location.pathname === item.path 
+                    ? '0 4px 20px rgba(0, 0, 0, 0.15)' 
+                    : 'none',
+                  transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                   '&:hover': {
-                    background: location.pathname === item.path 
-                      ? 'linear-gradient(135deg, #3d5a2f 0%, #2d4a22 100%)' 
-                      : 'rgba(255, 255, 255, 0.12)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.4)',
-                    color: '#e8f5e8'
+                    background: 'rgba(255, 255, 255, 0.18)',
+                    transform: 'translateX(8px)',
+                    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.2)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                   },
                 }}
               >
                 <ListItemIcon
                   sx={{
                     minWidth: 45,
-                    color: location.pathname === item.path ? '#81c784' : '#a5b8a8',
-                    '& svg': { fontSize: 24 }
+                    color: location.pathname === item.path ? '#ffffff' : '#cbd5e1',
+                    '& svg': { 
+                      fontSize: 24,
+                      transition: 'all 0.3s ease',
+                      filter: location.pathname === item.path 
+                        ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' 
+                        : 'none'
+                    },
                   }}
                 >
                   {item.icon}
@@ -186,9 +218,11 @@ const DashboardLayout = ({ children }) => {
       </Box>
       <Box sx={{ 
         p: 3,
-        background: 'linear-gradient(135deg, rgba(28, 41, 18, 0.3) 0%, rgba(45, 74, 34, 0.2) 100%)',
+        background: 'linear-gradient(135deg, hsla(219, 48%, 8%, 0.8) 0%, hsla(219, 48%, 12%, 0.6) 100%)',
         backdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+        position: 'relative',
+        zIndex: 1
       }}>
         <ListItem disablePadding>
           <ListItemButton
@@ -197,15 +231,16 @@ const DashboardLayout = ({ children }) => {
               borderRadius: 3,
               px: 3,
               py: 1.5,
-              background: 'rgba(244, 67, 54, 0.1)',
-              border: '1px solid rgba(244, 67, 54, 0.2)',
-              color: '#fc8181',
+              background: 'rgba(239, 68, 68, 0.12)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#fecaca',
               transition: 'all 0.3s ease',
               '&:hover': {
-                background: 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)',
-                color: 'white',
+                background: 'rgba(239, 68, 68, 0.2)',
                 transform: 'translateY(-2px)',
-                boxShadow: '0 8px 25px rgba(244, 67, 54, 0.3)',
+                boxShadow: '0 8px 25px rgba(239, 68, 68, 0.3)',
+                color: '#fef2f2',
               },
             }}
           >
@@ -240,7 +275,7 @@ const DashboardLayout = ({ children }) => {
             '& .MuiDrawer-paper': { 
               boxSizing: 'border-box', 
               width: drawerWidth,
-              background: 'linear-gradient(180deg, #1c2912 0%, #2d4a22 100%)',
+              background: 'linear-gradient(180deg, hsl(219, 48%, 8%) 0%, hsl(219, 48%, 12%) 35%, hsl(219, 48%, 16%) 100%)',
               backdropFilter: 'blur(20px)',
               border: 'none',
             },
@@ -255,7 +290,7 @@ const DashboardLayout = ({ children }) => {
             '& .MuiDrawer-paper': { 
               boxSizing: 'border-box', 
               width: drawerWidth,
-              background: 'linear-gradient(180deg, #1c2912 0%, #2d4a22 100%)',
+              background: 'linear-gradient(180deg, hsl(219, 48%, 8%) 0%, hsl(219, 48%, 12%) 35%, hsl(219, 48%, 16%) 100%)',
               backdropFilter: 'blur(20px)',
               border: 'none',
             },

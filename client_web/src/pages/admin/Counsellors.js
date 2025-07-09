@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Grid,
@@ -31,6 +32,7 @@ import axios from 'axios';
 
 const Counsellors = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [counsellors, setCounsellors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,9 +53,12 @@ const Counsellors = () => {
         }
       });
       setCounsellors(response.data.data.counsellors);
-      setTotalPages(Math.ceil(response.data.data.total / 10));
+      // Fix: Use totalCounsellors from pagination object and ensure it's a number
+      const totalCounsellors = response.data.data.pagination?.totalCounsellors || 0;
+      setTotalPages(Math.ceil(totalCounsellors / 10) || 1);
     } catch (err) {
       setError('Failed to fetch counsellors');
+      setTotalPages(1); // Set to 1 on error to prevent NaN
     } finally {
       setLoading(false);
     }
@@ -350,6 +355,7 @@ const Counsellors = () => {
                       variant="contained"
                       fullWidth
                       startIcon={<VisibilityIcon />}
+                      onClick={() => navigate(`/admin/counsellors/${counsellor._id}`)}
                       sx={{
                         py: 1.2,
                         borderRadius: 2,

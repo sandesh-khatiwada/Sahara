@@ -50,7 +50,7 @@ export default function OnboardingScreen() {
           image: (
             <View style={styles.imageContainer}>
               <LottieView
-                source={require('../../assets/animation/Robot.json')}
+                source={require('../../assets/animation/robot.json')}
                 autoPlay
                 loop
                 style={styles.lottie}

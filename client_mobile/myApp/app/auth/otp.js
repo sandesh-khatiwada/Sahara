@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ImageBackground, StyleSheet, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@env';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,7 +38,7 @@ const Otp = () => {
         return router.push('/auth/signup');
       }
 
-      const response = await fetch('http://192.168.18.142:5000/api/users/otp/verification', {
+      const response = await fetch(`${API_BASE_URL}/api/users/otp/verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email, otp: otpCode })
@@ -81,7 +82,7 @@ const Otp = () => {
         return router.push('/auth/signup');
       }
 
-      const response = await fetch('http://192.168.18.142:5000/api/users/otp/resend', {
+      const response = await fetch(`${API_BASE_URL}/api/users/otp/resend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email })

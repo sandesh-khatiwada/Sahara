@@ -9,39 +9,40 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import InputWithIcon from '../components/inputwithicons.js';
-import { API_BASE_URL } from '@env'; 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import InputWithIcon from '../../components/inputwithicons.js';
+import { API_BASE_URL } from '@env';
+
 const { width, height } = Dimensions.get('window');
 
-const Login = () => {
+const CounsellorLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('User'); // Note: Capitalized to match backend
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill all fields.');
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Use the unified login endpoint for both users and counsellors
-      const response = await fetch(`${API_BASE_URL}/api/users/login`, {
+      const response = await fetch(`${API_BASE_URL}/api/counsellors/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email,
-          password,
-          role, // Pass role to backend
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
@@ -50,92 +51,29 @@ const Login = () => {
         throw new Error(data.message || 'Login failed');
       }
 
-      if (role === 'Counsellor') {
-        // Store counsellor data
-        const counsellorData = {
-          _id: data.data.Counsellor._id,
-          fullName: data.data.Counsellor.fullName,
-          email: data.data.Counsellor.email,
-          designation: data.data.Counsellor.designation,
-          phone: data.data.Counsellor.phone,
-          chargePerHour: data.data.Counsellor.chargePerHour,
-          profilePhoto: data.data.Counsellor.profilePhoto,
-          role: 'Counsellor',
-          token: data.data.token,
-          createdAt: data.data.Counsellor.createdAt,
-          updatedAt: data.data.Counsellor.updatedAt,
-        };
-        
-        await AsyncStorage.setItem('user', JSON.stringify(counsellorData));
-        await AsyncStorage.setItem('token', data.data.token);
+      // Store counsellor data
+      await AsyncStorage.setItem('counsellorToken', data.token);
+      await AsyncStorage.setItem('counsellorData', JSON.stringify(data.counsellor));
 
-        // Navigate to counsellor dashboard
-        router.replace('/counsellor/main/home');
-      } else {
-        // Store user data and token
-        const userData = {
-          _id: data.data.User._id,
-          fullName: data.data.User.fullName,
-          email: data.data.User.email,
-          emailVerified: data.data.User.emailVerified,
-          role: 'User',
-          token: data.data.token,
-          createdAt: data.data.User.createdAt,
-          updatedAt: data.data.User.updatedAt,
-        };
-        await AsyncStorage.setItem('user', JSON.stringify(userData));
-        await AsyncStorage.setItem('token', data.data.token);
-
-        // Handle email verification for users
-        if (!data.data.User.emailVerified) {
-          router.replace('/auth/otp');
-          Alert.alert('Verification Needed', 'Please verify your email before logging in');
-          return;
-        }
-
-        // Navigate to user home screen
-        router.replace({
-          pathname: '/main/home',
-          params: {
-            user: JSON.stringify(userData),
-          },
-        });
-      }
+      // Navigate to counsellor dashboard
+      router.replace('/counsellor/main/home');
 
     } catch (error) {
-      console.error('Login error:', error);
-      
-      // Handle specific error cases
-      if (error.message.includes('verify your email')) {
-        router.replace('/auth/otp');
-      } else if (error.message.includes('Invalid credentials')) {
-        Alert.alert('Login Failed', 'Invalid credentials');
-      } else {
-        Alert.alert('Login Failed', error.message || 'An error occurred during login');
-      }
+      Alert.alert('Login Failed', error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    router.push('/auth/changepassword');
-  };
-
-  const roleOptions = [
-    { label: 'User', value: 'User' },
-    { label: 'Counselor', value: 'Counsellor' }, // Note: Value matches backend exactly
-  ];
-
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../assets/image/Therapist_client.png')}
+        source={require('../../../assets/image/Therapist_client.png')}
         style={styles.backgroundImage}
       />
       <View style={styles.formContainer}>
         <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to start your mental wellness journey.</Text>
+        <Text style={styles.subtitle}>Counsellor Portal - Sign in to manage your sessions and help clients.</Text>
 
         <InputWithIcon
           label="Email"
@@ -145,6 +83,7 @@ const Login = () => {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={!loading}
         />
 
         <InputWithIcon
@@ -156,27 +95,18 @@ const Login = () => {
           secureTextEntry={!showPassword}
           showPassword={showPassword}
           togglePassword={() => setShowPassword(!showPassword)}
-        />
-
-        <InputWithIcon
-          label="Role"
-          iconName="account-switch-outline"
-          placeholder="Role"
-          isDropdown={true}
-          items={roleOptions}
-          selectedValue={role}
-          onValueChange={(value) => setRole(value)}
+          editable={!loading}
         />
 
         <TouchableOpacity 
-          style={styles.forgotPassword} 
-          onPress={handleForgotPassword}
+          style={styles.forgotPassword}
+          onPress={() => router.push('/counsellor/auth/forgot-password')}
         >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.loginButton, loading && styles.disabledButton]} 
+        <TouchableOpacity
+          style={[styles.loginButton, loading && styles.disabledButton]}
           onPress={handleLogin}
           disabled={loading}
         >
@@ -194,11 +124,20 @@ const Login = () => {
         </View>
 
         <View style={styles.signupContainer}>
-          <Text style={styles.signupPrompt}>Do not have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/auth/signup')}>
-            <Text style={styles.signupLink}>Sign Up</Text>
+          <Text style={styles.signupPrompt}>New counsellor? </Text>
+          <TouchableOpacity onPress={() => router.push('/counsellor/auth/register')}>
+            <Text style={styles.signupLink}>Join Our Team</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Back to User App */}
+        <TouchableOpacity 
+          style={styles.backToUser}
+          onPress={() => router.push('/auth/login')}
+        >
+          <MaterialCommunityIcons name="account-outline" size={18} color="#007AFF" />
+          <Text style={styles.backToUserText}>Looking for user login?</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -283,6 +222,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 20,
   },
   signupPrompt: {
     color: 'black',
@@ -293,6 +233,21 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 16,
   },
+  backToUser: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    marginTop: 10,
+  },
+  backToUserText: {
+    color: '#007AFF',
+    fontSize: 16,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
 });
 
-export default Login;
+export default CounsellorLogin;

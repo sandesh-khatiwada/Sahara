@@ -5,6 +5,7 @@ import DashboardLayout from './components/admin/DashboardLayout';
 import Home from './pages/admin/Home';
 import AddCounsellor from './pages/admin/AddCounsellor';
 import Counsellors from './pages/admin/Counsellors';
+import CounsellorProfile from './pages/admin/CounsellorProfile';
 import Users from './pages/admin/Users';
 
 // Protected Route component
@@ -18,7 +19,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/" element={<Navigate to="/admin/login" />} />
         <Route path="/admin/login" element={<Login />} />
@@ -43,6 +44,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Counsellors />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/counsellors/:id"
+          element={
+            <ProtectedRoute>
+              <CounsellorProfile />
             </ProtectedRoute>
           }
         />

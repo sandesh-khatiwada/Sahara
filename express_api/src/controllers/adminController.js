@@ -422,4 +422,190 @@ export const getAllUsers = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};// --------------------Added Code -AR (for counsellor profile)
+
+// Get specific counsellor by ID (admin only)
+export const getCounsellorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid counsellor ID format'
+      });
+    }
+    
+    const counsellor = await Counsellor.findById(id)
+      .select('-password');
+
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+
+    // Try to populate sessions and notifications safely
+    try {
+      await counsellor.populate('sessions', 'sessionDate status');
+    } catch (sessionPopulateError) {
+      console.warn('Could not populate sessions:', sessionPopulateError.message);
+      counsellor.sessions = [];
+    }
+
+    try {
+      await counsellor.populate('notifications', 'message createdAt isRead');
+    } catch (notificationPopulateError) {
+      console.warn('Could not populate notifications:', notificationPopulateError.message);
+      counsellor.notifications = [];
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        counsellor
+      }
+    });
+  } catch (error) {
+    console.error('Get counsellor by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching counsellor details',
+      error: error.message
+    });
+  }
+};
+
+// Download counsellor document (admin only)
+export const downloadCounsellorDocument = async (req, res) => {
+  try {
+    const { counsellorId, documentIndex } = req.params;
+    
+    // Validate ObjectId format
+    if (!counsellorId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid counsellor ID format'
+      });
+    }
+    
+    const counsellor = await Counsellor.findById(counsellorId);
+    
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+    
+    const docIndex = parseInt(documentIndex);
+    if (isNaN(docIndex) || docIndex < 0 || docIndex >= counsellor.documents.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid document index'
+      });
+    }
+    
+    const document = counsellor.documents[docIndex];
+    if (!document || !document.filename) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+    
+    const filePath = path.join(process.cwd(), 'uploads', 'documents', document.filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document file not found on server'
+      });
+    }
+    
+    // Set appropriate headers for download
+    res.setHeader('Content-Disposition', `attachment; filename="${document.originalName}"`);
+    res.setHeader('Content-Type', document.mimetype || 'application/octet-stream');
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+  } catch (error) {
+    console.error('Download document error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error downloading document',
+      error: error.message
+    });
+  }
+};
+
+// Preview counsellor document (admin only)
+export const previewCounsellorDocument = async (req, res) => {
+  try {
+    const { counsellorId, documentIndex } = req.params;
+    
+    // Validate ObjectId format
+    if (!counsellorId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid counsellor ID format'
+      });
+    }
+    
+    const counsellor = await Counsellor.findById(counsellorId);
+    
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+    
+    const docIndex = parseInt(documentIndex);
+    if (isNaN(docIndex) || docIndex < 0 || docIndex >= counsellor.documents.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid document index'
+      });
+    }
+    
+    const document = counsellor.documents[docIndex];
+    if (!document || !document.filename) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+    
+    const filePath = path.join(process.cwd(), 'uploads', 'documents', document.filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document file not found on server'
+      });
+    }
+    
+    // Set appropriate headers for preview
+    res.setHeader('Content-Type', document.mimetype || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${document.originalName}"`);
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+  } catch (error) {
+    console.error('Preview document error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error previewing document',
+      error: error.message
+    });
+  }
+};

@@ -23,7 +23,11 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo/SaharaLOGO.png')} style={styles.logo} />
+      <Image 
+        source={require('../assets/logo/SaharaLOGO.png')} 
+        style={styles.logo}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -37,7 +41,6 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: width,
-    height: height, 
-    resizeMode: 'contain'
+    height: height,
   }
 });

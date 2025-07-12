@@ -47,7 +47,11 @@ const CustomHeader = ({ userData, onLogout }) => (
   <View style={styles.header}>
     <View style={styles.iconContainer}>
       <View style={styles.logoContainer}>
-        <Image source={require('./../../assets/image/SaharaAppIcon.png')} style={styles.logo} />
+        <Image 
+          source={require('./../../assets/image/SaharaAppIcon.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </View>
       <MaterialCommunityIcons name="magnify" size={40} color="#003087" />
       <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" />
@@ -307,7 +311,6 @@ const styles = StyleSheet.create({
   logo: {
     width: 60,
     height: 60,
-    resizeMode: 'contain',
   },
   iconContainer: {
     flexDirection: 'row',

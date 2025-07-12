@@ -177,7 +177,7 @@ const Login = () => {
 
         <TouchableOpacity 
           style={[styles.loginButton, loading && styles.disabledButton]} 
-          onPress={handleLogin}
+          onPress={()=>{router.replace('/counsellor/main/home');}}
           disabled={loading}
         >
           {loading ? (

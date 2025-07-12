@@ -1,7 +1,7 @@
 import express from 'express';
 import { signup, verifyOTP, resendOTP, login } from '../controllers/authController.js';
-import { addJournal, getJournals, getMoodHistory, getCounsellors } from '../controllers/userController.js';
-import { verifyToken } from '../middleware/authMiddleware.js';
+import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getUpcomingAppointments } from '../controllers/userController.js';
+import { verifyTokenUser } from '../middleware/authMiddleware.js';
 import { requestPasswordReset, verifyOTPAndResetPassword } from '../controllers/authController.js';
 
 
@@ -20,13 +20,13 @@ router.post('/otp/verification', verifyOTP);
 router.post('/otp/resend', resendOTP);
 
 // POST /api/users/journals - Add journal entry (protected route)
-router.post('/journals', verifyToken, addJournal);
+router.post('/journals', verifyTokenUser, addJournal);
 
 // GET /api/users/journals - Get user's journal entries (protected route)
-router.get('/journals', verifyToken, getJournals);
+router.get('/journals', verifyTokenUser, getJournals);
 
 // GET /api/users/mood/history - Get user's mood history (protected route)
-router.get('/mood/history', verifyToken, getMoodHistory);
+router.get('/mood/history', verifyTokenUser, getMoodHistory);
 
 // POST /api/users/password/reset - Request password reset
 router.post('/password/reset', requestPasswordReset);
@@ -35,6 +35,21 @@ router.post('/password/reset', requestPasswordReset);
 router.post('/password-reset/otp/verification', verifyOTPAndResetPassword);
 
 // GET /api/users/counsellors - Get counsellor details (protected route)
-router.get('/counsellors', verifyToken, getCounsellors);
+router.get('/counsellors', verifyTokenUser, getCounsellors);
+
+// GET /api/users/counsellors/all - Get all counsellors with advanced filtering and aggregation
+router.get('/counsellors/all', verifyTokenUser, getAllCounsellors);
+
+// GET /api/users/counsellor - Get counsellor details by email
+router.get('/counsellor',verifyTokenUser, getCounsellorByEmail);
+
+// POST /api/users/counsellor-booking - Book a counsellor session (protected route)
+router.post('/counsellor-booking', verifyTokenUser, bookCounsellorSession);
+
+// GET /api/users/pending-appointments - Get pending appointments (protected route)
+router.get('/pending-appointments', verifyTokenUser, getPendingAppointments);
+
+// GET /api/users/upcoming-appointments - Get upcoming appointments (protected route)
+router.get('/upcoming-appointments', verifyTokenUser, getUpcomingAppointments);
 
 export default router; 

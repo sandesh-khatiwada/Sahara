@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from "./routes/adminRoutes.js";
+import counsellorRoutes from "./routes/counsellorRoutes.js";
 
 
 import path from 'path';
@@ -35,6 +36,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Routes
 app.use('/api/users', userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use('/api/counsellors', counsellorRoutes); 
 
 
 

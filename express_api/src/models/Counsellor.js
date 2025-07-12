@@ -83,6 +83,25 @@ const counsellorSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Notification'
   }],
+  availability: [
+    {
+      dayOfWeek: {
+        type: String,
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        required: true
+      },
+      slots: [
+        {
+          period: {
+            type: String,
+            enum: ['Morning', 'Afternoon', 'Evening', 'Night'],
+            required: true
+          },
+          times: [String] // e.g., ['08:00', '09:00', '11:00']
+        }
+      ]
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now

@@ -245,7 +245,7 @@ export default function HomeScreen() {
         {/* My Appointments */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Appointments</Text>
-          <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/main/sessions')}><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
         </View>
         <FlatList
           data={appointments}
@@ -259,7 +259,7 @@ export default function HomeScreen() {
         {/* Book a Session */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Book a Session</Text>
-          <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/seeall/userside/all_sessions')}><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
         </View>
         <FlatList
           data={doctors}

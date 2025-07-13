@@ -12,6 +12,7 @@ import {
   TextInput,
   SafeAreaView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,8 +28,6 @@ const sampleRequests = [
     description: 'I have been experiencing severe anxiety and stress due to work pressure. I would like to discuss coping strategies and get professional help.',
     preferredDate: '2024-01-15',
     preferredTime: '10:00 AM',
-    urgency: 'Medium',
-    avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
     requestedAt: '2 hours ago',
     status: 'pending'
   },
@@ -40,8 +39,6 @@ const sampleRequests = [
     description: 'I have been feeling low and unmotivated for the past few weeks. I think I need professional help to understand what I am going through.',
     preferredDate: '2024-01-16',
     preferredTime: '2:00 PM',
-    urgency: 'High',
-    avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
     requestedAt: '4 hours ago',
     status: 'pending'
   },
@@ -53,80 +50,88 @@ const sampleRequests = [
     description: 'I am having trouble with my relationships and would like to work on communication skills and understanding boundaries.',
     preferredDate: '2024-01-17',
     preferredTime: '11:30 AM',
-    urgency: 'Low',
-    avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
     requestedAt: '1 day ago',
     status: 'pending'
   },
 ];
 
 const RequestCard = ({ request, onAccept, onReject, onViewDetails }) => {
-  const getUrgencyColor = (urgency) => {
-    switch (urgency) {
-      case 'High': return '#F44336';
-      case 'Medium': return '#FF9800';
-      case 'Low': return '#4CAF50';
-      default: return '#666';
-    }
-  };
-
   return (
     <View style={styles.requestCard}>
-      {/* Header */}
-      <View style={styles.requestHeader}>
-        <View style={styles.clientInfo}>
-          <Image source={{ uri: request.avatar }} style={styles.avatar} />
-          <View style={styles.clientDetails}>
-            <Text style={styles.clientName}>{request.clientName}</Text>
-            <Text style={styles.clientAge}>Age: {request.clientAge}</Text>
-            <Text style={styles.requestTime}>{request.requestedAt}</Text>
+      <View style={styles.cardGlass}>
+        {/* Status Indicator */}
+        <View style={styles.statusIndicator} />
+        
+        {/* Header with Client Info */}
+        <View style={styles.requestHeader}>
+          <View style={styles.clientInfo}>
+            <View style={styles.clientAvatar}>
+              <MaterialCommunityIcons name="account" size={24} color="#007AFF" />
+            </View>
+            <View style={styles.clientDetails}>
+              <Text style={styles.clientName}>{request.clientName}</Text>
+              <Text style={styles.requestTime}>{request.requestedAt}</Text>
+            </View>
+          </View>
+          <View style={styles.priorityBadge}>
+            <MaterialCommunityIcons name="star" size={14} color="#FF9800" />
           </View>
         </View>
-        <View style={[styles.urgencyBadge, { backgroundColor: getUrgencyColor(request.urgency) }]}>
-          <Text style={styles.urgencyText}>{request.urgency}</Text>
-        </View>
-      </View>
 
-      {/* Issue */}
-      <View style={styles.issueSection}>
-        <Text style={styles.issueTitle}>{request.issue}</Text>
-        <Text style={styles.issueDescription} numberOfLines={2}>
-          {request.description}
-        </Text>
-      </View>
-
-      {/* Preferred Schedule */}
-      <View style={styles.scheduleSection}>
-        <View style={styles.scheduleItem}>
-          <MaterialCommunityIcons name="calendar" size={16} color="#666" />
-          <Text style={styles.scheduleText}>{request.preferredDate}</Text>
+        {/* Issue Section */}
+        <View style={styles.issueSection}>
+          <View style={styles.issueTitleRow}>
+            <MaterialCommunityIcons name="heart-pulse" size={18} color="#E91E63" />
+            <Text style={styles.issueTitle}>{request.issue}</Text>
+          </View>
+          <Text style={styles.issueDescription} numberOfLines={3}>
+            {request.description}
+          </Text>
         </View>
-        <View style={styles.scheduleItem}>
-          <MaterialCommunityIcons name="clock-outline" size={16} color="#666" />
-          <Text style={styles.scheduleText}>{request.preferredTime}</Text>
-        </View>
-      </View>
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.detailsButton} onPress={() => onViewDetails(request)}>
-          <Text style={styles.detailsButtonText}>View Details</Text>
-        </TouchableOpacity>
-        <View style={styles.actionButtons}>
+        {/* Schedule Section */}
+        <View style={styles.scheduleSection}>
+          <View style={styles.scheduleCard}>
+            <View style={styles.scheduleItem}>
+              <View style={styles.scheduleIcon}>
+                <MaterialCommunityIcons name="calendar" size={16} color="#4CAF50" />
+              </View>
+              <Text style={styles.scheduleText}>{request.preferredDate}</Text>
+            </View>
+            <View style={styles.scheduleItem}>
+              <View style={styles.scheduleIcon}>
+                <MaterialCommunityIcons name="clock-outline" size={16} color="#2196F3" />
+              </View>
+              <Text style={styles.scheduleText}>{request.preferredTime}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Actions */}
+        <View style={styles.actions}>
           <TouchableOpacity 
-            style={styles.rejectButton} 
-            onPress={() => onReject(request.id)}
+            style={styles.viewDetailsButton} 
+            onPress={() => onViewDetails(request)}
           >
-            <MaterialCommunityIcons name="close" size={18} color="#fff" />
-            <Text style={styles.rejectButtonText}>Decline</Text>
+            <MaterialCommunityIcons name="eye" size={16} color="#007AFF" />
+            <Text style={styles.viewDetailsButtonText}>View Details</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.acceptButton} 
-            onPress={() => onAccept(request.id)}
-          >
-            <MaterialCommunityIcons name="check" size={18} color="#fff" />
-            <Text style={styles.acceptButtonText}>Accept</Text>
-          </TouchableOpacity>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              style={styles.rejectButton} 
+              onPress={() => onReject(request.id)}
+            >
+              <MaterialCommunityIcons name="close" size={16} color="#fff" />
+              <Text style={styles.rejectButtonText}>Decline</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.acceptButton} 
+              onPress={() => onAccept(request.id)}
+            >
+              <MaterialCommunityIcons name="check" size={16} color="#fff" />
+              <Text style={styles.acceptButtonText}>Accept</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
@@ -134,8 +139,6 @@ const RequestCard = ({ request, onAccept, onReject, onViewDetails }) => {
 };
 
 const RequestDetailsModal = ({ visible, request, onClose, onAccept, onReject }) => {
-  const [responseMessage, setResponseMessage] = useState('');
-
   if (!request) return null;
 
   return (
@@ -157,10 +160,8 @@ const RequestDetailsModal = ({ visible, request, onClose, onAccept, onReject }) 
           {/* Client Info */}
           <View style={styles.modalSection}>
             <View style={styles.clientInfoSection}>
-              <Image source={{ uri: request.avatar }} style={styles.modalAvatar} />
               <View>
                 <Text style={styles.modalClientName}>{request.clientName}</Text>
-                <Text style={styles.modalClientAge}>Age: {request.clientAge}</Text>
                 <Text style={styles.modalRequestTime}>Requested {request.requestedAt}</Text>
               </View>
             </View>
@@ -187,19 +188,6 @@ const RequestDetailsModal = ({ visible, request, onClose, onAccept, onReject }) 
               </View>
             </View>
           </View>
-
-          {/* Response Message */}
-          <View style={styles.modalSection}>
-            <Text style={styles.modalSectionTitle}>Response Message (Optional)</Text>
-            <TextInput
-              style={styles.responseInput}
-              placeholder="Add a personal message for the client..."
-              multiline
-              numberOfLines={4}
-              value={responseMessage}
-              onChangeText={setResponseMessage}
-            />
-          </View>
         </ScrollView>
 
         {/* Modal Actions */}
@@ -207,7 +195,7 @@ const RequestDetailsModal = ({ visible, request, onClose, onAccept, onReject }) 
           <TouchableOpacity 
             style={styles.modalRejectButton}
             onPress={() => {
-              onReject(request.id, responseMessage);
+              onReject(request.id);
               onClose();
             }}
           >
@@ -216,7 +204,7 @@ const RequestDetailsModal = ({ visible, request, onClose, onAccept, onReject }) 
           <TouchableOpacity 
             style={styles.modalAcceptButton}
             onPress={() => {
-              onAccept(request.id, responseMessage);
+              onAccept(request.id);
               onClose();
             }}
           >
@@ -233,7 +221,6 @@ export default function BookingRequests() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, high, medium, low
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -268,57 +255,64 @@ export default function BookingRequests() {
     setModalVisible(true);
   };
 
-  const filteredRequests = requests.filter(request => {
-    if (filter === 'all') return true;
-    return request.urgency.toLowerCase() === filter;
-  });
-
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="alert-circle" size={48} color="#F44336" />
-          <Text style={styles.errorText}>Something went wrong</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => setError(null)}>
-            <Text style={styles.retryText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <View style={styles.container}>
+        {/* Gradient Background for non-web platforms */}
+        {Platform.OS !== 'web' && (
+          <View style={styles.gradientBackground}>
+            <View style={styles.gradientTop} />
+            <View style={styles.gradientBottom} />
+          </View>
+        )}
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.errorContainer}>
+            <MaterialCommunityIcons name="alert-circle" size={48} color="#F44336" />
+            <Text style={styles.errorText}>Something went wrong</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => setError(null)}>
+              <Text style={styles.retryText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <View style={styles.container}>
+      {/* Gradient Background for non-web platforms */}
+      {Platform.OS !== 'web' && (
+        <View style={styles.gradientBackground}>
+          <View style={styles.gradientTop} />
+          <View style={styles.gradientBottom} />
+        </View>
+      )}
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Booking Requests</Text>
-        <Text style={styles.headerSubtitle}>{requests.length} pending requests</Text>
-      </View>
-
-      {/* Filter */}
-      <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {['all', 'high', 'medium', 'low'].map((filterOption) => (
-            <TouchableOpacity
-              key={filterOption}
-              style={[
-                styles.filterButton,
-                filter === filterOption && styles.activeFilterButton
-              ]}
-              onPress={() => setFilter(filterOption)}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                filter === filterOption && styles.activeFilterButtonText
-              ]}>
-                {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
-                {filterOption === 'all' ? ` (${requests.length})` : 
-                 ` (${requests.filter(r => r.urgency.toLowerCase() === filterOption).length})`}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.headerGlass}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerTitleContainer}>
+                <MaterialCommunityIcons name="calendar-clock" size={28} color="#007AFF" />
+                <View style={styles.headerTextContainer}>
+                  <Text style={styles.headerTitle}>Booking Requests</Text>
+                  <Text style={styles.headerSubtitle}>{requests.length} pending appointments</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.headerRight}>
+              <View style={styles.counsellorAvatarContainer}>
+                <Image 
+                  source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
+                  style={styles.counsellorAvatar} 
+                />
+                <View style={styles.onlineIndicator} />
+              </View>
+            </View>
+          </View>
+        </View>
       </View>
 
       {/* Requests List */}
@@ -326,8 +320,8 @@ export default function BookingRequests() {
         style={styles.requestsList}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {filteredRequests.length > 0 ? (
-          filteredRequests.map((request) => (
+        {requests.length > 0 ? (
+          requests.map((request) => (
             <RequestCard
               key={request.id}
               request={request}
@@ -341,9 +335,7 @@ export default function BookingRequests() {
             <MaterialCommunityIcons name="calendar-check" size={64} color="#ccc" />
             <Text style={styles.emptyStateTitle}>No requests found</Text>
             <Text style={styles.emptyStateSubtitle}>
-              {filter === 'all' 
-                ? 'You have no pending booking requests at the moment.'
-                : `No ${filter} priority requests found.`}
+              You have no pending booking requests at the moment.
             </Text>
           </View>
         )}
@@ -359,18 +351,347 @@ export default function BookingRequests() {
       />
       </View>
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F8FAFE',
     marginTop: 35,
+  },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1,
+  },
+  gradientTop: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  gradientBottom: {
+    flex: 1,
+    backgroundColor: '#e3f2fd',
+    opacity: 0.6,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
   },
+  
+  // Header Styles with Enhanced Design
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerGlass: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    marginLeft: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  headerRight: {
+    marginLeft: 15,
+  },
+  counsellorAvatarContainer: {
+    position: 'relative',
+  },
+  counsellorAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: '#007AFF',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  
+  // Request Card Styles with Enhanced Design
+  requestsList: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 15,
+  },
+  requestCard: {
+    marginBottom: 16,
+  },
+  cardGlass: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  statusIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 4,
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+  },
+  
+  // Client Info Section
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 18,
+  },
+  clientInfo: {
+    flexDirection: 'row',
+    flex: 1,
+    alignItems: 'center',
+  },
+  clientAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 122, 255, 0.2)',
+  },
+  clientDetails: {
+    flex: 1,
+  },
+  clientName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  requestTime: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '500',
+  },
+  priorityBadge: {
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 152, 0, 0.2)',
+  },
+  
+  // Issue Section
+  issueSection: {
+    marginBottom: 18,
+    backgroundColor: 'rgba(233, 30, 99, 0.05)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(233, 30, 99, 0.1)',
+  },
+  issueTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  issueTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginLeft: 8,
+    letterSpacing: -0.2,
+  },
+  issueDescription: {
+    fontSize: 15,
+    color: '#555',
+    lineHeight: 22,
+    fontWeight: '400',
+  },
+  
+  // Schedule Section
+  scheduleSection: {
+    marginBottom: 20,
+  },
+  scheduleCard: {
+    backgroundColor: 'rgba(76, 175, 80, 0.05)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.1)',
+  },
+  scheduleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  scheduleIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  scheduleText: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+  },
+  
+  // Actions Section
+  actions: {
+    gap: 12,
+  },
+  viewDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.2)',
+  },
+  viewDetailsButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  rejectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F44336',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#F44336',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  rejectButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  acceptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  acceptButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  
+  // Empty State Styles
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 20,
+    margin: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  emptyStateTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 20,
+  },
+  emptyStateSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
+    lineHeight: 22,
+  },
+  
+  // Error State Styles
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -388,326 +709,155 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   retryText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#003087',
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
-  },
-  filterContainer: {
-    backgroundColor: '#fff',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  filterButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F0',
-    marginRight: 10,
-  },
-  activeFilterButton: {
-    backgroundColor: '#007AFF',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  activeFilterButtonText: {
-    color: '#fff',
-  },
-  requestsList: {
-    flex: 1,
-    padding: 20,
-  },
-  requestCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  clientInfo: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  clientDetails: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  clientAge: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  requestTime: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  urgencyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  urgencyText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  issueSection: {
-    marginBottom: 12,
-  },
-  issueTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  issueDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  scheduleSection: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  scheduleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  scheduleText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 5,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  detailsButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  detailsButtonText: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-  },
-  rejectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F44336',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  rejectButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  acceptButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  acceptButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#666',
-    marginTop: 16,
-  },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 40,
-  },
   
-  // Modal Styles
+  // Modal Styles with Glass Morphism
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(248, 250, 254, 0.95)',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     marginTop: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.3)',
+    backdropFilter: 'blur(20px)',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
   },
   modalContent: {
     flex: 1,
     padding: 20,
   },
   modalSection: {
-    marginBottom: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    backdropFilter: 'blur(20px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
   },
   clientInfoSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  modalAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
-  },
   modalClientName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalClientAge: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 2,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
   },
   modalRequestTime: {
     fontSize: 14,
     color: '#999',
     marginTop: 2,
+    fontWeight: '500',
   },
   modalSectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 12,
+    letterSpacing: -0.3,
   },
   modalIssueTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: '#1a1a1a',
+    marginBottom: 10,
+    letterSpacing: -0.3,
   },
   modalIssueDescription: {
-    fontSize: 15,
-    color: '#666',
-    lineHeight: 22,
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 24,
   },
   modalSchedule: {
     flexDirection: 'row',
+    gap: 20,
   },
   modalScheduleItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 25,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.2)',
   },
   modalScheduleText: {
-    fontSize: 15,
-    color: '#333',
+    fontSize: 16,
+    color: '#007AFF',
     marginLeft: 8,
-  },
-  responseInput: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 15,
-    textAlignVertical: 'top',
-    minHeight: 100,
+    fontWeight: '600',
   },
   modalActions: {
     flexDirection: 'row',
     padding: 20,
+    gap: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
   },
   modalRejectButton: {
     flex: 1,
     backgroundColor: '#F44336',
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
-    marginRight: 10,
+    shadowColor: '#F44336',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalRejectButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   modalAcceptButton: {
     flex: 1,
     backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
-    marginLeft: 10,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalAcceptButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

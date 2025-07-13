@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
   Switch,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -266,16 +267,38 @@ export default function CounsellorProfile() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      {/* Gradient Background for non-web platforms */}
+      {Platform.OS !== 'web' && (
+        <View style={styles.gradientBackground}>
+          <View style={styles.gradientTop} />
+          <View style={styles.gradientBottom} />
+        </View>
+      )}
+      <ScrollView style={styles.scrollView}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Profile</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Image 
+              source={{ 
+                uri: counsellorData.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
+              }} 
+              style={styles.counsellorAvatar} 
+            />
+          </View>
+        </View>
       </View>
 
       {/* Profile Photo & Basic Info */}
       <View style={styles.profileHeader}>
         <TouchableOpacity onPress={handleChangeProfilePhoto} style={styles.profilePhotoContainer}>
-          <Image source={{ uri: counsellorData.profilePhoto }} style={styles.profilePhoto} />
+          <Image source={{ 
+            uri: counsellorData.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
+          }} style={styles.profilePhoto} />
           <View style={styles.cameraIcon}>
             <MaterialCommunityIcons name="camera" size={20} color="#fff" />
           </View>
@@ -339,18 +362,6 @@ export default function CounsellorProfile() {
           value={counsellorData.qualifications.length > 50 ? counsellorData.qualifications.substring(0, 50) + '...' : counsellorData.qualifications}
           onPress={() => handleEditField('qualifications', 'Qualifications', true)}
         />
-        <ProfileItem
-          icon="heart"
-          title="Specializations"
-          value={counsellorData.specializations.join(', ')}
-          onPress={() => router.push('/counsellor/profile/specializations')}
-        />
-        <ProfileItem
-          icon="translate"
-          title="Languages"
-          value={counsellorData.languages.join(', ')}
-          onPress={() => router.push('/counsellor/profile/languages')}
-        />
       </ProfileSection>
 
       {/* Settings */}
@@ -360,24 +371,6 @@ export default function CounsellorProfile() {
           title="Availability"
           value="Manage your schedule"
           onPress={() => setAvailabilityModalVisible(true)}
-        />
-        <ProfileItem
-          icon="bell"
-          title="Notifications"
-          value="Manage notification preferences"
-          onPress={() => setNotificationsModalVisible(true)}
-        />
-        <ProfileItem
-          icon="shield-check"
-          title="Privacy & Security"
-          value="Manage your privacy settings"
-          onPress={() => router.push('/counsellor/profile/privacy')}
-        />
-        <ProfileItem
-          icon="help-circle"
-          title="Help & Support"
-          value="Get help or contact support"
-          onPress={() => router.push('/counsellor/profile/support')}
         />
       </ProfileSection>
 
@@ -488,13 +481,44 @@ export default function CounsellorProfile() {
         </View>
       </Modal>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f8f9fa',
+    position: 'relative',
+  },
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  gradientTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: '50%',
+    backgroundColor: '#ffffff',
+  },
+  gradientBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '50%',
+    backgroundColor: '#e3f2fd',
+    opacity: 0.6,
+  },
+  scrollView: {
+    flex: 1,
+    zIndex: 2,
     marginTop: 35,
   },
   header: {
@@ -502,6 +526,24 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    marginLeft: 15,
+  },
+  counsellorAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF',
   },
   headerTitle: {
     fontSize: 24,

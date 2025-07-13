@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,7 +31,6 @@ const sampleHistory = [
     sessionNotes: 'Client showed significant improvement in anxiety management. Discussed coping strategies and scheduled follow-up.',
     rating: 5,
     feedback: 'Very helpful session. Dr. Smith was understanding and provided practical advice.',
-    avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
     meetingId: 'MTG-001-2024',
     fee: 120,
   },
@@ -46,7 +46,6 @@ const sampleHistory = [
     sessionNotes: 'Initial consultation completed. Client expressing symptoms of moderate depression. Recommended CBT approach.',
     rating: 4,
     feedback: 'Good initial session. Looking forward to continuing treatment.',
-    avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
     meetingId: 'MTG-002-2024',
     fee: 100,
   },
@@ -62,7 +61,6 @@ const sampleHistory = [
     sessionNotes: 'Worked on communication patterns. Client is more aware of relationship dynamics. Progress noted.',
     rating: 5,
     feedback: 'Excellent session. Really helped me understand my relationship patterns.',
-    avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
     meetingId: 'MTG-003-2024',
     fee: 120,
   },
@@ -78,7 +76,6 @@ const sampleHistory = [
     sessionNotes: 'Client did not attend scheduled session. Follow-up message sent.',
     rating: null,
     feedback: null,
-    avatar: 'https://randomuser.me/api/portraits/men/4.jpg',
     meetingId: 'MTG-004-2024',
     fee: 0,
   },
@@ -94,13 +91,12 @@ const sampleHistory = [
     sessionNotes: 'Good progress on anxiety management techniques. Client practicing mindfulness regularly.',
     rating: 4,
     feedback: 'Helpful techniques. Feeling more confident managing my anxiety.',
-    avatar: 'https://randomuser.me/api/portraits/women/5.jpg',
     meetingId: 'MTG-005-2024',
     fee: 110,
   },
 ];
 
-const HistoryCard = ({ session, onViewDetails, onEditNotes }) => {
+const HistoryCard = ({ session, onEditNotes }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return '#4CAF50';
@@ -141,7 +137,6 @@ const HistoryCard = ({ session, onViewDetails, onEditNotes }) => {
       {/* Header */}
       <View style={styles.historyHeader}>
         <View style={styles.clientInfo}>
-          <Image source={{ uri: session.avatar }} style={styles.avatar} />
           <View style={styles.clientDetails}>
             <Text style={styles.clientName}>{session.clientName}</Text>
             <Text style={styles.sessionType}>{session.type}</Text>
@@ -193,12 +188,6 @@ const HistoryCard = ({ session, onViewDetails, onEditNotes }) => {
 
       {/* Actions */}
       <View style={styles.historyActions}>
-        <TouchableOpacity 
-          style={styles.viewButton} 
-          onPress={() => onViewDetails(session)}
-        >
-          <Text style={styles.viewButtonText}>View Details</Text>
-        </TouchableOpacity>
         {session.status === 'completed' && (
           <TouchableOpacity 
             style={styles.editNotesButton}
@@ -253,10 +242,8 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
           {/* Client Info */}
           <View style={styles.modalSection}>
             <View style={styles.clientInfoSection}>
-              <Image source={{ uri: session.avatar }} style={styles.modalAvatar} />
               <View>
                 <Text style={styles.modalClientName}>{session.clientName}</Text>
-                <Text style={styles.modalClientAge}>Age: {session.clientAge}</Text>
                 <Text style={styles.modalSessionType}>{session.type}</Text>
               </View>
             </View>
@@ -429,15 +416,32 @@ export default function SessionHistory() {
   // Calculate statistics
   const totalSessions = history.length;
   const completedSessions = history.filter(s => s.status === 'completed').length;
-  const totalRevenue = history.reduce((sum, session) => sum + session.fee, 0);
   const averageRating = history.filter(s => s.rating).reduce((sum, s, _, arr) => sum + s.rating / arr.length, 0);
 
   return (
     <View style={styles.container}>
+      {/* Gradient Background for non-web platforms */}
+      {Platform.OS !== 'web' && (
+        <View style={styles.gradientBackground}>
+          <View style={styles.gradientTop} />
+          <View style={styles.gradientBottom} />
+        </View>
+      )}
+      <ScrollView style={styles.scrollView}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Session History</Text>
-        <Text style={styles.headerSubtitle}>{totalSessions} total sessions</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Session History</Text>
+            <Text style={styles.headerSubtitle}>{totalSessions} total sessions</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Image 
+              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
+              style={styles.counsellorAvatar} 
+            />
+          </View>
+        </View>
       </View>
 
       {/* Statistics */}
@@ -445,11 +449,6 @@ export default function SessionHistory() {
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{completedSessions}</Text>
           <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>₹{totalRevenue.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Total Revenue</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
@@ -496,7 +495,6 @@ export default function SessionHistory() {
             <HistoryCard
               key={session.id}
               session={session}
-              onViewDetails={handleViewDetails}
               onEditNotes={handleEditNotes}
             />
           ))
@@ -527,6 +525,7 @@ export default function SessionHistory() {
         onClose={() => setEditNotesModalVisible(false)}
         onSave={handleSaveNotes}
       />
+      </ScrollView>
     </View>
   );
 }
@@ -534,7 +533,37 @@ export default function SessionHistory() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f8f9fa',
+    position: 'relative',
+  },
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  gradientTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: '50%',
+    backgroundColor: '#ffffff',
+  },
+  gradientBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '50%',
+    backgroundColor: '#e3f2fd',
+    opacity: 0.6,
+  },
+  scrollView: {
+    flex: 1,
+    zIndex: 2,
     marginTop: 35,
   },
   header: {
@@ -542,6 +571,24 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    marginLeft: 15,
+  },
+  counsellorAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF',
   },
   headerTitle: {
     fontSize: 24,
@@ -629,12 +676,6 @@ const styles = StyleSheet.create({
   clientInfo: {
     flexDirection: 'row',
     flex: 1,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
   },
   clientDetails: {
     flex: 1,
@@ -801,11 +842,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-  },
-  modalClientAge: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 2,
   },
   modalSessionType: {
     fontSize: 14,

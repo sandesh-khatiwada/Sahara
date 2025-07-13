@@ -11,11 +11,11 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '@env';  // Add this if you have API base url in env
 
 const { width } = Dimensions.get('window');
 
@@ -52,16 +52,6 @@ const pendingRequests = [
   },
 ];
 
-// Helper function to get profile photo URL string safely
-const getProfilePhotoUri = (photo) => {
-  if (!photo) return null;
-  if (typeof photo === 'string') return photo; // Already string
-  if (photo.url) return `${API_BASE_URL}/${photo.url}`;
-  if (photo.path) return `${API_BASE_URL}/${photo.path}`;
-  if (photo.filename) return `${API_BASE_URL}/uploads/profile_photos/${photo.filename}`;
-  return null;
-};
-
 const CounsellorHeader = ({ counsellorData, onLogout }) => (
   <View style={styles.header}>
     <StatusBar backgroundColor="transparent" barStyle="dark-content" />
@@ -82,12 +72,15 @@ const CounsellorHeader = ({ counsellorData, onLogout }) => (
           style={styles.profileButton}
           onPress={() => router.push('/counsellor/main/profile')}
         >
-          <Image 
-            source={{ 
-              uri: counsellorData?.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
-            }} 
-            style={styles.profilePhoto} 
-          />
+          <View style={styles.profileContainer}>
+            <Image 
+              source={{ 
+                uri: counsellorData?.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
+              }} 
+              style={styles.profilePhoto} 
+            />
+            <View style={styles.onlineIndicator} />
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -182,14 +175,54 @@ export default function CounsellorHome() {
     (async () => {
       try {
         const userData = await AsyncStorage.getItem('user');
-        if (userData) {
+        const token = await AsyncStorage.getItem('token');
+        
+        if (userData && token) {
           const parsedUserData = JSON.parse(userData);
-          if (parsedUserData.role === 'Counsellor') {
+          
+          // Check if user is a counsellor and has valid token
+          if (parsedUserData.role === 'Counsellor' && parsedUserData.token) {
             setCounsellorData(parsedUserData);
+          } else {
+            // Not a counsellor or invalid data, redirect to login
+            Alert.alert(
+              'Access Denied',
+              'You need to login as a counsellor to access this area.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => router.replace('/auth/login')
+                }
+              ]
+            );
+            return;
           }
+        } else {
+          // No authentication data, redirect to login
+          Alert.alert(
+            'Authentication Required',
+            'Please login to continue.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/auth/login')
+              }
+            ]
+          );
+          return;
         }
       } catch (error) {
         console.error('Error loading counsellor data:', error);
+        Alert.alert(
+          'Error',
+          'Failed to load user data. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/auth/login')
+            }
+          ]
+        );
       } finally {
         setLoadingCounsellor(false);
       }
@@ -211,8 +244,13 @@ export default function CounsellorHome() {
               await AsyncStorage.removeItem('counsellorData');
               await AsyncStorage.removeItem('user');
               await AsyncStorage.removeItem('token');
+              
+              // Navigate to login screen
               router.replace('/auth/login');
+              
+              Alert.alert('Success', 'You have been logged out successfully.');
             } catch (error) {
+              console.error('Logout error:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           }
@@ -224,8 +262,25 @@ export default function CounsellorHome() {
   if (loadingCounsellor) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>Loading counsellor data...</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: '#666', fontWeight: '500' }}>
+            Verifying authentication...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // If no counsellor data after loading, don't render the main content
+  if (!counsellorData) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+          <MaterialCommunityIcons name="account-alert" size={48} color="#F44336" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: '#666', textAlign: 'center', fontWeight: '500' }}>
+            Authentication required{'\n'}Redirecting to login...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -268,80 +323,74 @@ export default function CounsellorHome() {
                 />
               </View>
             </View>
-          </View>
-          {/* Upcoming Sessions */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
-              <TouchableOpacity onPress={() => router.push('/counsellor/main/sessions')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            {upcomingSessions.slice(0, 2).map((session) => (
-              <SessionCard key={session.id} session={session} />
-            ))}
-          </View>
-          {/* Pending Requests */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Pending Requests</Text>
-              <TouchableOpacity onPress={() => router.push('/counsellor/main/requests')}>
-                <Text style={styles.seeAllText}>Manage All</Text>
-              </TouchableOpacity>
-            </View>
-            {pendingRequests.map((request) => (
-              <RequestCard key={request.id} request={request} />
-            ))}
-          </View>
-          {/* Quick Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.quickActions}>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/sessions')}
-              >
-                <MaterialCommunityIcons name="video-plus" size={32} color="#4CAF50" />
-                <Text style={styles.quickActionText}>Start Session</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/availability')}
-              >
-                <MaterialCommunityIcons name="calendar-edit" size={32} color="#2196F3" />
-                <Text style={styles.quickActionText}>Set Availability</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/notes')}
-              >
-                <MaterialCommunityIcons name="note-plus" size={32} color="#FF9800" />
-                <Text style={styles.quickActionText}>Add Notes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/profile')}
-              >
-                <MaterialCommunityIcons name="account-edit" size={32} color="#9C27B0" />
-                <Text style={styles.quickActionText}>Edit Profile</Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity 
-    style={styles.quickActionCard}
-    onPress={handleLogout}
-  >
-    <MaterialCommunityIcons name="logout" size={32} color="#F44336" />
-    <Text style={styles.quickActionText}>Logout</Text>
-  </TouchableOpacity>
+            {/* Upcoming Sessions */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
+                <TouchableOpacity onPress={() => router.push('/counsellor/main/sessions')}>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              </View>
+              {upcomingSessions.slice(0, 2).map((session) => (
+                <SessionCard key={session.id} session={session} />
+              ))}
+            </View>
+
+            {/* Pending Requests */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Pending Requests</Text>
+                <TouchableOpacity onPress={() => router.push('/counsellor/main/requests')}>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              </View>
+              {pendingRequests.slice(0, 2).map((request) => (
+                <RequestCard key={request.id} request={request} />
+              ))}
+            </View>
+
+            {/* Quick Actions */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <View style={styles.quickActions}>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/availability')}
+                >
+                  <MaterialCommunityIcons name="calendar-clock" size={32} color="#007AFF" />
+                  <Text style={styles.quickActionText}>Manage Availability</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/sessions')}
+                >
+                  <MaterialCommunityIcons name="video-plus" size={32} color="#4CAF50" />
+                  <Text style={styles.quickActionText}>Schedule Session</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/profile')}
+                >
+                  <MaterialCommunityIcons name="account-cog" size={32} color="#FF9800" />
+                  <Text style={styles.quickActionText}>Profile Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/history')}
+                >
+                  <MaterialCommunityIcons name="chart-line" size={32} color="#9C27B0" />
+                  <Text style={styles.quickActionText}>View Analytics</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-// ... Styles unchanged from your original code
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -585,94 +634,104 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sessionClient: {
-    fontSize: width < 375 ? 14 : 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
     marginBottom: 2,
+    letterSpacing: -0.2,
   },
   sessionType: {
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
+    fontWeight: '500',
   },
   sessionTime: {
-    fontSize: width < 375 ? 11 : 12,
+    fontSize: 12,
     color: '#4CAF50',
     fontWeight: '600',
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
   joinButton: {
     flexDirection: 'row',
     backgroundColor: '#4CAF50',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4CAF50',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 4px 3px rgba(76,175,80,0.3)',
-      },
-    }),
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  joinButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 4,
   },
   requestCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  requestClientInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 4px 3px rgba(0,0,0,0.1)',
-      },
-    }),
+    flex: 1,
   },
   requestAvatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    marginRight: 15,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(233, 30, 99, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   requestDetails: {
     flex: 1,
   },
   requestClient: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 2,
+    letterSpacing: -0.2,
   },
   requestIssue: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
-    marginVertical: 2,
+    marginBottom: 4,
+    fontWeight: '500',
   },
   requestTime: {
     fontSize: 12,
     color: '#FF9800',
     fontWeight: '600',
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
   },
   requestActions: {
     flexDirection: 'row',
@@ -680,18 +739,22 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     backgroundColor: '#4CAF50',
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   rejectButton: {
     backgroundColor: '#F44336',
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#F44336',
@@ -706,38 +769,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   quickActionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
-    padding: 20,
-    width: (width - 44) / 2, // Responsive width accounting for padding and gap
+    padding: 18,
+    width: (width - 52) / 2,
     minHeight: 100,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 8px 4px rgba(0,0,0,0.08)',
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    marginBottom: 12,
   },
   quickActionText: {
-    fontSize: width < 375 ? 12 : 14,
-    color: '#333',
+    fontSize: 14,
+    color: '#1a1a1a',
     fontWeight: '600',
-    marginTop: 8,
+    marginTop: 12,
     textAlign: 'center',
     lineHeight: 18,
+    letterSpacing: -0.1,
   },
 });
-
-// Export the CounsellorHome component as default

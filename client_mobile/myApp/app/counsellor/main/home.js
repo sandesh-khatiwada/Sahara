@@ -316,6 +316,14 @@ export default function CounsellorHome() {
                 <MaterialCommunityIcons name="account-edit" size={32} color="#9C27B0" />
                 <Text style={styles.quickActionText}>Edit Profile</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity 
+    style={styles.quickActionCard}
+    onPress={handleLogout}
+  >
+    <MaterialCommunityIcons name="logout" size={32} color="#F44336" />
+    <Text style={styles.quickActionText}>Logout</Text>
+  </TouchableOpacity>
             </View>
           </View>
         </View>

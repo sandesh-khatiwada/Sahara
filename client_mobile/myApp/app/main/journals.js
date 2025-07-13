@@ -140,7 +140,7 @@ const journals = () => {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
@@ -164,65 +164,70 @@ const journals = () => {
       </View>
 
       {activeTab === 'New Journal' ? (
-        <View style={styles.newJournalContainer}>
-          <Text style={styles.sectionTitle}>New Journal Entry</Text>
-          <Text style={styles.privacyText}>Private</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Give your entry title"
-            value={title}
-            onChangeText={setTitle}
-          />
-          <Text style={styles.label}>How's your mood?</Text>
-          <View style={styles.moodSelector}>
-            {moodOptions.map((option, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.moodOption, mood === option.value && styles.selectedMood]}
-                onPress={() => setMood(option.value)}
-              >
-                <Text style={styles.moodEmoji}>{option.emoji}</Text>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+          style={{ flex: 1 }}
+        >
+          <View style={styles.newJournalContainer}>
+            <Text style={styles.sectionTitle}>New Journal Entry</Text>
+            <Text style={styles.privacyText}>Private</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Give your entry title"
+              value={title}
+              onChangeText={setTitle}
+            />
+            <Text style={styles.label}>How's your mood?</Text>
+            <View style={styles.moodSelector}>
+              {moodOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.moodOption, mood === option.value && styles.selectedMood]}
+                  onPress={() => setMood(option.value)}
+                >
+                  <Text style={styles.moodEmoji}>{option.emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.label}>Your Thoughts</Text>
+            <TextInput
+              style={[styles.input, styles.thoughtsInput]}
+              placeholder="Write about your day, thoughts, feelings..."
+              value={thoughts}
+              onChangeText={setThoughts}
+              multiline
+            />
+            <View style={styles.shareContainer}>
+              <TouchableOpacity onPress={() => setShareWithCounselor(!shareWithCounselor)}>
+                <View style={styles.checkbox}>
+                  {shareWithCounselor && <View style={styles.checkboxInner} />}
+                </View>
               </TouchableOpacity>
-            ))}
+              <Text style={styles.shareText}>Share this with my counselor</Text>
+            </View>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => {}}>
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveEntry} disabled={isSaving}>
+                <Text style={styles.buttonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={styles.label}>Your Thoughts</Text>
-          <TextInput
-            style={[styles.input, styles.thoughtsInput]}
-            placeholder="Write about your day, thoughts, feelings..."
-            value={thoughts}
-            onChangeText={setThoughts}
-            multiline
-          />
-          <View style={styles.shareContainer}>
-            <TouchableOpacity onPress={() => setShareWithCounselor(!shareWithCounselor)}>
-              <View style={styles.checkbox}>
-                {shareWithCounselor && <View style={styles.checkboxInner} />}
-              </View>
-            </TouchableOpacity>
-            <Text style={styles.shareText}>Share this with my counselor</Text>
-          </View>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => {}}>
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveEntry} disabled={isSaving}>
-              <Text style={styles.buttonText}>{isSaving ? 'Saving...' : 'Save Entry'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        </ScrollView>
+      ) : loadingHistory ? (
+        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
       ) : (
-        loadingHistory ? (
-          <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
-        ) : (
-          <FlatList
-            data={journalHistory}
-            renderItem={renderJournalItem}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.historyList}
-          />
-        )
+        <FlatList
+          data={journalHistory}
+          renderItem={renderJournalItem}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.historyList}
+          style={{ flex: 1 }}
+        />
       )}
-    </ScrollView>
+    </View>
   );
 };
 

@@ -1,25 +1,32 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Tabs, usePathname } from 'expo-router';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function MainLayout() {
+  const pathname = usePathname();
+
+  // List of paths where tab bar should be hidden
+  const hideTabBarRoutes = ['/main/hello/hi'];
+
+  const isTabBarVisible = !hideTabBarRoutes.includes(pathname);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
         tabBarStyle: {
+          display: isTabBarVisible ? 'flex' : 'none', // Hide tab bar conditionally
           position: 'absolute',
-          backgroundColor: '#E0F7FA', // Adjusted to match the light blue from the image
+          backgroundColor: '#E0F7FA',
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          height: 70, // Adjusted to match the image height
+          height: 70,
           paddingBottom: 5,
           paddingTop: 5,
         },
-        tabBarActiveTintColor: '#003087', // Darker blue to match the image
-        tabBarInactiveTintColor: '#00308780', // Slightly transparent version of active color
+        tabBarActiveTintColor: '#003087',
+        tabBarInactiveTintColor: '#00308780',
       }}
     >
       <Tabs.Screen
@@ -31,7 +38,6 @@ export default function MainLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="journals"
         options={{
@@ -41,22 +47,18 @@ export default function MainLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="chat"
         options={{
           title: 'AI Chat',
           tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              style={styles.chatButton}
-            >
+            <TouchableOpacity {...props} style={styles.chatButton}>
               <MaterialCommunityIcons name="robot-excited-outline" size={32} color="#fff" />
             </TouchableOpacity>
           ),
+          tabBarStyle: { display: 'none' },
         }}
       />
-
       <Tabs.Screen
         name="sessions"
         options={{
@@ -66,11 +68,10 @@ export default function MainLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
-        name="mood"
+        name="statistics"
         options={{
-          title: 'Mood',
+          title: 'Statistics',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="emoticon-outline" color={color} size={size} />
           ),
@@ -82,17 +83,17 @@ export default function MainLayout() {
 
 const styles = StyleSheet.create({
   chatButton: {
-    top: -15, // Adjusted to match the image's elevation
-    backgroundColor: '#003087', // Adjusted to match the dark blue from the image
-    width: 56, // Adjusted to match the image
-    height: 56, // Adjusted to match the image
-    borderRadius: 28, // Half of width/height for a perfect circle
+    top: -15,
+    backgroundColor: '#003087',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 3, // Reduced elevation to match the image
+    elevation: 3,
   },
 });

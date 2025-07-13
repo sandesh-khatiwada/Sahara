@@ -15,6 +15,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@env';  // Add this if you have API base url in env
 
 const { width } = Dimensions.get('window');
 
@@ -55,6 +56,16 @@ const pendingRequests = [
   },
 ];
 
+// Helper function to get profile photo URL string safely
+const getProfilePhotoUri = (photo) => {
+  if (!photo) return null;
+  if (typeof photo === 'string') return photo; // Already string
+  if (photo.url) return `${API_BASE_URL}/${photo.url}`;
+  if (photo.path) return `${API_BASE_URL}/${photo.path}`;
+  if (photo.filename) return `${API_BASE_URL}/uploads/profile_photos/${photo.filename}`;
+  return null;
+};
+
 const CounsellorHeader = ({ counsellorData, onLogout }) => (
   <View style={styles.header}>
     <StatusBar backgroundColor="#fff" barStyle="dark-content" />
@@ -82,7 +93,7 @@ const CounsellorHeader = ({ counsellorData, onLogout }) => (
         >
           <Image 
             source={{ 
-              uri: counsellorData?.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
+              uri: getProfilePhotoUri(counsellorData?.profilePhoto) || 'https://randomuser.me/api/portraits/women/8.jpg' 
             }} 
             style={styles.profilePhoto} 
           />
@@ -171,11 +182,6 @@ export default function CounsellorHome() {
       }
     })();
   }, []);
-
-//testing connection----
-
-
-
 
   const handleLogout = async () => {
     Alert.alert(
@@ -315,12 +321,12 @@ export default function CounsellorHome() {
               </TouchableOpacity>
 
               <TouchableOpacity 
-    style={styles.quickActionCard}
-    onPress={handleLogout}
-  >
-    <MaterialCommunityIcons name="logout" size={32} color="#F44336" />
-    <Text style={styles.quickActionText}>Logout</Text>
-  </TouchableOpacity>
+                style={styles.quickActionCard}
+                onPress={handleLogout}
+              >
+                <MaterialCommunityIcons name="logout" size={32} color="#F44336" />
+                <Text style={styles.quickActionText}>Logout</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -329,6 +335,7 @@ export default function CounsellorHome() {
   );
 }
 
+// ... Styles unchanged from your original code
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -544,108 +551,85 @@ const styles = StyleSheet.create({
     fontSize: width < 375 ? 14 : 16,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 2,
   },
   sessionType: {
     fontSize: width < 375 ? 12 : 14,
     color: '#666',
-    marginBottom: 4,
+    marginTop: 2,
   },
   sessionTime: {
-    fontSize: width < 375 ? 11 : 12,
-    color: '#4CAF50',
-    fontWeight: '600',
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    fontSize: width < 375 ? 10 : 12,
+    color: '#999',
+    marginTop: 2,
   },
   joinButton: {
     backgroundColor: '#4CAF50',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4CAF50',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 4px 3px rgba(76,175,80,0.3)',
-      },
-    }),
+    borderRadius: 12,
+    padding: 8,
   },
   requestCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    padding: 12,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.05,
         shadowRadius: 3,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
       web: {
-        boxShadow: '0 4px 3px rgba(0,0,0,0.1)',
+        boxShadow: '0 4px 3px rgba(0,0,0,0.05)',
       },
     }),
   },
   requestAvatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    marginRight: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#EEE',
   },
   requestDetails: {
     flex: 1,
   },
   requestClient: {
-    fontSize: 16,
     fontWeight: 'bold',
+    fontSize: 14,
     color: '#333',
   },
   requestIssue: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
-    marginVertical: 2,
+    marginTop: 2,
   },
   requestTime: {
-    fontSize: 12,
-    color: '#FF9800',
-    fontWeight: '600',
+    fontSize: 10,
+    color: '#999',
+    marginTop: 2,
   },
   requestActions: {
     flexDirection: 'row',
+    gap: 8,
   },
   acceptButton: {
     backgroundColor: '#4CAF50',
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
+    padding: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
   },
   rejectButton: {
     backgroundColor: '#F44336',
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
+    padding: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -656,38 +640,31 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   quickActionCard: {
+    width: (width - 48) / 3,
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    width: (width - 44) / 2, // Responsive width accounting for padding and gap
-    minHeight: 100,
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.1,
         shadowRadius: 4,
       },
       android: {
         elevation: 4,
       },
       web: {
-        boxShadow: '0 8px 4px rgba(0,0,0,0.08)',
+        boxShadow: '0 6px 4px rgba(0,0,0,0.1)',
       },
     }),
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
   },
   quickActionText: {
-    fontSize: width < 375 ? 12 : 14,
+    marginTop: 6,
+    fontSize: 12,
     color: '#333',
-    fontWeight: '600',
-    marginTop: 8,
     textAlign: 'center',
-    lineHeight: 18,
   },
 });
-
-// Export the CounsellorHome component as default

@@ -125,6 +125,34 @@ export default function CounsellorProfile() {
   const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false);
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
 
+  // Logout handler: clears all tokens and navigates to login
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            setTimeout(async () => {
+              try {
+                await AsyncStorage.removeItem('counsellorToken');
+                await AsyncStorage.removeItem('counsellorData');
+                await AsyncStorage.removeItem('user');
+                await AsyncStorage.removeItem('token');
+                router.replace('/auth/login');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to logout');
+              }
+            }, 100);
+          }
+        }
+      ]
+    );
+  };
+
   useEffect(() => {
     loadCounsellorData();
   }, []);
@@ -240,31 +268,7 @@ export default function CounsellorProfile() {
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Clear all possible storage locations
-              await AsyncStorage.removeItem('counsellorToken');
-              await AsyncStorage.removeItem('counsellorData');
-              await AsyncStorage.removeItem('user');
-              await AsyncStorage.removeItem('token');
-              router.replace('/auth/login');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to logout');
-            }
-          }
-        }
-      ]
-    );
-  };
+  // Only keep the setTimeout version below
 
   return (
     <View style={styles.container}>
@@ -283,10 +287,12 @@ export default function CounsellorProfile() {
             <Text style={styles.headerTitle}>Profile</Text>
           </View>
           <View style={styles.headerRight}>
-            <Image 
-              source={{ 
-                uri: counsellorData.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
-              }} 
+             <Image
+                  source={
+                            counsellorData?.profilePhoto && typeof counsellorData.profilePhoto === 'string'
+                              ? { uri: counsellorData.profilePhoto }
+                              : { uri: 'https://randomuser.me/api/portraits/women/8.jpg' }
+                          }
               style={styles.counsellorAvatar} 
             />
           </View>
@@ -296,9 +302,14 @@ export default function CounsellorProfile() {
       {/* Profile Photo & Basic Info */}
       <View style={styles.profileHeader}>
         <TouchableOpacity onPress={handleChangeProfilePhoto} style={styles.profilePhotoContainer}>
-          <Image source={{ 
-            uri: counsellorData.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
-          }} style={styles.profilePhoto} />
+          <Image
+            source={
+              counsellorData?.profilePhoto && typeof counsellorData.profilePhoto === 'string'
+                ? { uri: counsellorData.profilePhoto }
+                : { uri: 'https://randomuser.me/api/portraits/women/8.jpg' }
+            }
+            style={styles.profilePhoto}
+          />
           <View style={styles.cameraIcon}>
             <MaterialCommunityIcons name="camera" size={20} color="#fff" />
           </View>
@@ -376,11 +387,11 @@ export default function CounsellorProfile() {
 
       {/* Account */}
       <ProfileSection title="Account">
-        <ProfileItem
-          icon="logout"
-          title="Logout"
-          onPress={handleLogout}
-        />
+    <ProfileItem
+      icon="logout"
+      title="Logout"
+      onPress={handleLogout}
+    />
       </ProfileSection>
 
       {/* Edit Field Modal */}

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-View,
-ScrollView,
-Text,
-StyleSheet,
-Image,
-TouchableOpacity,
-Alert,
-Dimensions,
-SafeAreaView,
-StatusBar,
-Platform,
+  View,
+  ScrollView,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+  Dimensions,
+  SafeAreaView,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -18,88 +18,85 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
+// Sample data
 const upcomingSessions = [
-{
-id: '1',
-clientName: 'Aayusha K.',
-avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
-type: 'Anxiety Counseling',
-date: 'Today',
-time: '10:00 AM',
-},
-{
-id: '2',
-clientName: 'John D.',
-avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
-type: 'Depression Support',
-date: 'Today',
-time: '2:00 PM',
-},
+  {
+    id: '1',
+    clientName: 'Aayusha K.',
+    avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
+    type: 'Anxiety Counseling',
+    date: 'Today',
+    time: '10:00 AM',
+  },
+  {
+    id: '2',
+    clientName: 'John D.',
+    avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
+    type: 'Depression Support',
+    date: 'Today',
+    time: '2:00 PM',
+  },
 ];
 
 const pendingRequests = [
-{
-id: '1',
-clientName: 'Sarah M.',
-avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
-issue: 'Stress Management',
-requestedTime: '3:00 PM Today',
-},
-{
-id: '2',
-clientName: 'Mike J.',
-avatar: 'https://randomuser.me/api/portraits/men/4.jpg',
-issue: 'Relationship Issues',
-requestedTime: '4:00 PM Tomorrow',
-},
+  {
+    id: '1',
+    clientName: 'Sarah M.',
+    avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
+    issue: 'Stress Management',
+    requestedTime: '3:00 PM Today',
+  },
+  {
+    id: '2',
+    clientName: 'Mike J.',
+    avatar: 'https://randomuser.me/api/portraits/men/4.jpg',
+    issue: 'Relationship Issues',
+    requestedTime: '4:00 PM Tomorrow',
+  },
 ];
 
 const CounsellorHeader = ({ counsellorData, onLogout }) => (
-<View style={styles.header}>
-<StatusBar backgroundColor="#fff" barStyle="dark-content" />
-<View style={styles.headerTop}>
-<View style={styles.logoContainer}>
-<Image
-source={require('../../../assets/image/SaharaAppIcon.png')}
-style={styles.logo}
-resizeMode="contain"
-/>
-</View>
-<View style={styles.headerActions}>
-<TouchableOpacity
-style={styles.notificationButton}
-onPress={() => router.push('/counsellor/main/notifications')}
-> 
-{/* <MaterialCommunityIconsname="bell-outline" size={24} color="#003087" /> */}
-<View style={styles.notificationBadge}>
-<Text style={styles.badgeText}>3</Text>
-</View>
-</TouchableOpacity>
-<TouchableOpacity
-style={styles.profileButton}
-onPress={() => router.push('/counsellor/main/profile')}
-> 
-<Image
-  source={
-    typeof counsellorData?.profilePhoto === 'string'
-      ? { uri: counsellorData.profilePhoto }
-      : counsellorData?.profilePhoto?.uri
-        ? { uri: counsellorData.profilePhoto.uri }
-        : { uri: 'https://randomuser.me/api/portraits/women/8.jpg' }
-  }
-  style={styles.profilePhoto}
-/>
-</TouchableOpacity>
-</View>
-</View>
-<View style={styles.separatorLine} />
-<View style={styles.greetingContainer}>
-<Text style={styles.greeting}>Welcome Dr. {counsellorData?.fullName || 'Counsellor'} 👨‍⚕️</Text>
-<Text style={styles.message}>
-"Thank you for making a difference in people's lives. Your dedication helps heal hearts and minds. 💙"
-</Text>
-</View>
-</View>
+  <View style={styles.header}>
+    <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+    <View style={styles.headerTop}>
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('../../../assets/image/SaharaAppIcon.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+      <View style={styles.headerActions}>
+        <TouchableOpacity 
+          style={styles.notificationButton}
+          onPress={() => router.push('/counsellor/main/notifications')}
+        >
+          <MaterialCommunityIcons name="bell-outline" size={24} color="#003087" />
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>3</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => router.push('/counsellor/main/profile')}
+        >
+          <Image 
+            source={{ 
+              uri: counsellorData?.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
+            }} 
+            style={styles.profilePhoto} 
+          />
+        </TouchableOpacity>
+      </View>
+    </View>
+    <View style={styles.separatorLine} />
+    <View style={styles.greetingContainer}>
+      <Text style={styles.greeting}>Welcome Dr. {counsellorData?.fullName || 'Counsellor'} 👨‍⚕️</Text>
+      <Text style={styles.message}>
+        "Thank you for making a difference in people's lives. Your dedication helps heal hearts and minds. 💙"
+      </Text>
+    </View>
+  </View>
 );
 
 const StatCard = ({ icon, title, value, color, onPress }) => (
@@ -149,6 +146,7 @@ const RequestCard = ({ request }) => (
 
 export default function CounsellorHome() {
   const [counsellorData, setCounsellorData] = useState(null);
+  const [loadingCounsellor, setLoadingCounsellor] = useState(true);
   const [todayStats, setTodayStats] = useState({
     sessions: 5,
     newRequests: 3,
@@ -157,31 +155,27 @@ export default function CounsellorHome() {
   });
 
   useEffect(() => {
-    loadCounsellorData();
-  }, []);
-
-  const loadCounsellorData = async () => {
-    try {
-      // Try to get counsellor data from either storage location
-      let data = await AsyncStorage.getItem('counsellorData');
-      if (!data) {
-        // Fallback to check user data for counsellor role
+    (async () => {
+      try {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
           const parsedUserData = JSON.parse(userData);
           if (parsedUserData.role === 'Counsellor') {
-            data = JSON.stringify(parsedUserData);
+            setCounsellorData(parsedUserData);
           }
         }
+      } catch (error) {
+        console.error('Error loading counsellor data:', error);
+      } finally {
+        setLoadingCounsellor(false);
       }
-      
-      if (data) {
-        setCounsellorData(JSON.parse(data));
-      }
-    } catch (error) {
-      console.error('Error loading counsellor data:', error);
-    }
-  };
+    })();
+  }, []);
+
+//testing connection----
+
+
+
 
   const handleLogout = async () => {
     Alert.alert(
@@ -208,6 +202,16 @@ export default function CounsellorHome() {
     );
   };
 
+  if (loadingCounsellor) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>Loading counsellor data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView 
@@ -216,7 +220,6 @@ export default function CounsellorHome() {
         showsVerticalScrollIndicator={false}
       >
         <CounsellorHeader counsellorData={counsellorData} onLogout={handleLogout} />
-        
         <View style={styles.content}>
           {/* Today's Overview */}
           <View style={styles.section}>
@@ -254,7 +257,6 @@ export default function CounsellorHome() {
               />
             </View>
           </View>
-
           {/* Upcoming Sessions */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -267,7 +269,6 @@ export default function CounsellorHome() {
               <SessionCard key={session.id} session={session} />
             ))}
           </View>
-
           {/* Pending Requests */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -280,7 +281,6 @@ export default function CounsellorHome() {
               <RequestCard key={request.id} request={request} />
             ))}
           </View>
-
           {/* Quick Actions */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -292,7 +292,6 @@ export default function CounsellorHome() {
                 <MaterialCommunityIcons name="video-plus" size={32} color="#4CAF50" />
                 <Text style={styles.quickActionText}>Start Session</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity 
                 style={styles.quickActionCard}
                 onPress={() => router.push('/counsellor/main/availability')}
@@ -300,7 +299,6 @@ export default function CounsellorHome() {
                 <MaterialCommunityIcons name="calendar-edit" size={32} color="#2196F3" />
                 <Text style={styles.quickActionText}>Set Availability</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity 
                 style={styles.quickActionCard}
                 onPress={() => router.push('/counsellor/main/notes')}
@@ -308,7 +306,6 @@ export default function CounsellorHome() {
                 <MaterialCommunityIcons name="note-plus" size={32} color="#FF9800" />
                 <Text style={styles.quickActionText}>Add Notes</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity 
                 style={styles.quickActionCard}
                 onPress={() => router.push('/counsellor/main/profile')}

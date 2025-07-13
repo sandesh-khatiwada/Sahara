@@ -73,11 +73,13 @@ const CounsellorHeader = ({ counsellorData, onLogout }) => (
           onPress={() => router.push('/counsellor/main/profile')}
         >
           <View style={styles.profileContainer}>
-            <Image 
-              source={{ 
-                uri: counsellorData?.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
-              }} 
-              style={styles.profilePhoto} 
+            <Image
+              source={
+                counsellorData?.profilePhoto && typeof counsellorData.profilePhoto === 'string'
+                  ? { uri: counsellorData.profilePhoto }
+                  : { uri: 'https://randomuser.me/api/portraits/women/8.jpg' }
+              }
+              style={styles.profilePhoto}
             />
             <View style={styles.onlineIndicator} />
           </View>

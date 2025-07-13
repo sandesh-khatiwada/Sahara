@@ -114,3 +114,6 @@ client_web/junit.xml
 client_mobile/coverage/
 client_mobile/.nyc_output/
 client_mobile/junit.xml
+
+
+node_modules/

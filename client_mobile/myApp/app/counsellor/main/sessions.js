@@ -1,187 +1,122 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
-  Alert,
-  RefreshControl,
-  Modal,
-  FlatList,
+  Dimensions,
   SafeAreaView,
+  StatusBar,
   Platform,
+  Modal,
+  Alert,
+  FlatList,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '@env';
+import { router } from 'expo-router';
 
-// Sample data - replace with API calls
+const { width, height } = Dimensions.get('window');
+
+// Sample sessions data
 const sampleSessions = [
   {
     id: '1',
     clientName: 'Aayusha Karki',
-    clientAge: 24,
+    type: 'Anxiety Counseling',
     date: '2024-01-15',
     time: '10:00 AM',
-    duration: 60,
-    type: 'Individual Therapy',
-    status: 'scheduled',
-    sessionNotes: 'Follow-up on anxiety management techniques',
-    avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
-    meetingId: 'MTG-001-2024',
-    isToday: true,
-    canJoin: true,
+    duration: '60 minutes',
+    status: 'upcoming',
+    notes: 'First session with client, focus on anxiety management techniques',
   },
   {
     id: '2',
-    clientName: 'John Doe',
-    clientAge: 28,
+    clientName: 'John Doe', 
+    type: 'Depression Support',
     date: '2024-01-15',
     time: '2:00 PM',
-    duration: 45,
-    type: 'Depression Support',
-    status: 'scheduled',
-    sessionNotes: 'Initial consultation for depression screening',
-    avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
-    meetingId: 'MTG-002-2024',
-    isToday: true,
-    canJoin: false,
+    duration: '45 minutes',
+    status: 'upcoming',
+    notes: 'Follow-up session on cognitive behavioral therapy',
   },
   {
     id: '3',
     clientName: 'Sarah Miller',
-    clientAge: 22,
-    date: '2024-01-16',
-    time: '11:30 AM',
-    duration: 60,
     type: 'Relationship Counseling',
-    status: 'scheduled',
-    sessionNotes: 'Working on communication patterns',
-    avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
-    meetingId: 'MTG-003-2024',
-    isToday: false,
-    canJoin: false,
+    date: '2024-01-14',
+    time: '11:00 AM',
+    duration: '60 minutes',
+    status: 'completed',
+    notes: 'Discussion about communication patterns',
   },
   {
     id: '4',
-    clientName: 'Michael Johnson',
-    clientAge: 31,
-    date: '2024-01-14',
-    time: '3:00 PM',
-    duration: 60,
+    clientName: 'Mike Johnson',
     type: 'Stress Management',
+    date: '2024-01-14',
+    time: '3:30 PM',
+    duration: '45 minutes',
     status: 'completed',
-    sessionNotes: 'Discussed mindfulness techniques and coping strategies',
-    avatar: 'https://randomuser.me/api/portraits/men/4.jpg',
-    meetingId: 'MTG-004-2024',
-    isToday: false,
-    canJoin: false,
+    notes: 'Mindfulness and relaxation techniques introduced',
   },
 ];
 
-const SessionCard = React.memo(({ session, onJoinSession, onViewDetails, onReschedule, onCancel }) => {
+const SessionCard = ({ session, onPress, onJoin }) => {
   const getStatusColor = (status) => {
     switch (status) {
-      case 'scheduled': return session.isToday ? '#4CAF50' : '#2196F3';
-      case 'in-progress': return '#FF9800';
+      case 'upcoming': return '#4CAF50';
       case 'completed': return '#666';
       case 'cancelled': return '#F44336';
-      default: return '#666';
+      default: return '#007AFF';
     }
   };
 
-  const getStatusText = (status) => {
+  const getStatusIcon = (status) => {
     switch (status) {
-      case 'scheduled': return session.isToday ? 'Today' : 'Scheduled';
-      case 'in-progress': return 'In Progress';
-      case 'completed': return 'Completed';
-      case 'cancelled': return 'Cancelled';
-      default: return status;
+      case 'upcoming': return 'clock-outline';
+      case 'completed': return 'check-circle';
+      case 'cancelled': return 'close-circle';
+      default: return 'calendar';
     }
   };
 
   return (
-    <View style={styles.sessionCard}>
-      {/* Header */}
+    <TouchableOpacity style={styles.sessionCard} onPress={() => onPress(session)}>
       <View style={styles.sessionHeader}>
-        <View style={styles.clientInfo}>
-          <Image 
-            source={{ uri: session.avatar }} 
-            style={styles.avatar}
-            loadingIndicatorSource={{ uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' }}
-            defaultSource={{ uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' }}
-          />
-          <View style={styles.clientDetails}>
-            <Text style={styles.clientName}>{session.clientName}</Text>
+        <View style={styles.sessionClientInfo}>
+          <View style={[styles.sessionAvatar, { backgroundColor: getStatusColor(session.status) + '15' }]}>
+            <MaterialCommunityIcons name="account" size={20} color={getStatusColor(session.status)} />
+          </View>
+          <View style={styles.sessionDetails}>
+            <Text style={styles.sessionClient}>{session.clientName}</Text>
             <Text style={styles.sessionType}>{session.type}</Text>
-            <Text style={styles.sessionId}>ID: {session.meetingId}</Text>
+            <Text style={styles.sessionDateTime}>{session.date} • {session.time}</Text>
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(session.status) }]}>
-          <Text style={styles.statusText}>{getStatusText(session.status)}</Text>
-        </View>
-      </View>
-
-      {/* Session Details */}
-      <View style={styles.sessionDetails}>
-        <View style={styles.detailRow}>
-          <MaterialCommunityIcons name="calendar" size={16} color="#666" />
-          <Text style={styles.detailText}>{session.date}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <MaterialCommunityIcons name="clock-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{session.time} ({session.duration} min)</Text>
-        </View>
-        {session.sessionNotes && (
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="note-text" size={16} color="#666" />
-            <Text style={styles.detailText} numberOfLines={1}>{session.sessionNotes}</Text>
+        <View style={styles.sessionActions}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(session.status) + '15' }]}>
+            <MaterialCommunityIcons name={getStatusIcon(session.status)} size={14} color={getStatusColor(session.status)} />
+            <Text style={[styles.statusText, { color: getStatusColor(session.status) }]}>
+              {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+            </Text>
           </View>
-        )}
-      </View>
-
-      {/* Actions */}
-      <View style={styles.sessionActions}>
-        <TouchableOpacity 
-          style={styles.detailsButton} 
-          onPress={() => onViewDetails(session)}
-        >
-          <Text style={styles.detailsButtonText}>Details</Text>
-        </TouchableOpacity>
-        
-        {session.status === 'scheduled' && (
-          <View style={styles.actionButtons}>
-            {session.canJoin && (
-              <TouchableOpacity 
-                style={styles.joinButton}
-                onPress={() => onJoinSession(session)}
-              >
-                <MaterialCommunityIcons name="video" size={16} color="#fff" />
-                <Text style={styles.joinButtonText}>Join</Text>
-              </TouchableOpacity>
-            )}
+          {session.status === 'upcoming' && (
             <TouchableOpacity 
-              style={styles.rescheduleButton}
-              onPress={() => onReschedule(session)}
+              style={styles.joinButton}
+              onPress={() => onJoin(session)}
             >
-              <MaterialCommunityIcons name="calendar-edit" size={16} color="#007AFF" />
+              <MaterialCommunityIcons name="video" size={16} color="#fff" />
+              <Text style={styles.joinButtonText}>Join</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.cancelButton}
-              onPress={() => onCancel(session)}
-            >
-              <MaterialCommunityIcons name="close" size={16} color="#F44336" />
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
-});
+};
 
-const SessionDetailsModal = ({ visible, session, onClose, onJoinSession }) => {
+const SessionDetailsModal = ({ visible, session, onClose }) => {
   if (!session) return null;
 
   return (
@@ -202,77 +137,46 @@ const SessionDetailsModal = ({ visible, session, onClose, onJoinSession }) => {
         <ScrollView style={styles.modalContent}>
           {/* Client Info */}
           <View style={styles.modalSection}>
-            <View style={styles.clientInfoSection}>
-              <Image 
-                source={{ uri: session.avatar }} 
-                style={styles.modalAvatar}
-                loadingIndicatorSource={{ uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' }}
-                defaultSource={{ uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' }}
-              />
-              <View>
-                <Text style={styles.modalClientName}>{session.clientName}</Text>
-                <Text style={styles.modalClientAge}>Age: {session.clientAge}</Text>
-                <Text style={styles.modalSessionType}>{session.type}</Text>
-              </View>
-            </View>
+            <Text style={styles.modalSectionTitle}>Client Information</Text>
+            <Text style={styles.modalClientName}>{session.clientName}</Text>
+            <Text style={styles.modalSessionType}>{session.type}</Text>
           </View>
 
-          {/* Session Info */}
+          {/* Session Details */}
           <View style={styles.modalSection}>
             <Text style={styles.modalSectionTitle}>Session Information</Text>
-            <View style={styles.modalInfoGrid}>
-              <View style={styles.modalInfoItem}>
-                <Text style={styles.modalInfoLabel}>Date</Text>
-                <Text style={styles.modalInfoValue}>{session.date}</Text>
-              </View>
-              <View style={styles.modalInfoItem}>
-                <Text style={styles.modalInfoLabel}>Time</Text>
-                <Text style={styles.modalInfoValue}>{session.time}</Text>
-              </View>
-              <View style={styles.modalInfoItem}>
-                <Text style={styles.modalInfoLabel}>Duration</Text>
-                <Text style={styles.modalInfoValue}>{session.duration} minutes</Text>
-              </View>
-              <View style={styles.modalInfoItem}>
-                <Text style={styles.modalInfoLabel}>Meeting ID</Text>
-                <Text style={styles.modalInfoValue}>{session.meetingId}</Text>
-              </View>
+            <View style={styles.modalInfoRow}>
+              <MaterialCommunityIcons name="calendar" size={20} color="#007AFF" />
+              <Text style={styles.modalInfoText}>{session.date}</Text>
+            </View>
+            <View style={styles.modalInfoRow}>
+              <MaterialCommunityIcons name="clock-outline" size={20} color="#007AFF" />
+              <Text style={styles.modalInfoText}>{session.time}</Text>
+            </View>
+            <View style={styles.modalInfoRow}>
+              <MaterialCommunityIcons name="timer-outline" size={20} color="#007AFF" />
+              <Text style={styles.modalInfoText}>{session.duration}</Text>
             </View>
           </View>
 
-          {/* Session Notes */}
-          {session.sessionNotes && (
+          {/* Notes */}
+          {session.notes && (
             <View style={styles.modalSection}>
               <Text style={styles.modalSectionTitle}>Session Notes</Text>
-              <Text style={styles.modalNotes}>{session.sessionNotes}</Text>
+              <Text style={styles.modalNotes}>{session.notes}</Text>
             </View>
           )}
-
-          {/* Previous Sessions */}
-          <View style={styles.modalSection}>
-            <Text style={styles.modalSectionTitle}>Previous Sessions</Text>
-            <Text style={styles.modalSubtext}>3 previous sessions completed</Text>
-            <TouchableOpacity style={styles.viewHistoryButton}>
-              <Text style={styles.viewHistoryButtonText}>View Session History</Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
 
         {/* Modal Actions */}
-        {session.status === 'scheduled' && (
+        {session.status === 'upcoming' && (
           <View style={styles.modalActions}>
-            {session.canJoin && (
-              <TouchableOpacity 
-                style={styles.modalJoinButton}
-                onPress={() => {
-                  onJoinSession(session);
-                  onClose();
-                }}
-              >
-                <MaterialCommunityIcons name="video" size={20} color="#fff" />
-                <Text style={styles.modalJoinButtonText}>Join Session</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.modalRescheduleButton}>
+              <Text style={styles.modalRescheduleButtonText}>Reschedule</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalJoinButton}>
+              <Text style={styles.modalJoinButtonText}>Join Session</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -280,123 +184,108 @@ const SessionDetailsModal = ({ visible, session, onClose, onJoinSession }) => {
   );
 };
 
-export default function Sessions() {
+export default function CounsellorSessions() {
   const [sessions, setSessions] = useState(sampleSessions);
-  const [refreshing, setRefreshing] = useState(false);
+  const [filteredSessions, setFilteredSessions] = useState(sampleSessions);
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedSession, setSelectedSession] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, today, upcoming, completed
+  const [refreshing, setRefreshing] = useState(false);
+
+  const filters = [
+    { key: 'all', label: 'All Sessions', icon: 'calendar-multiple' },
+    { key: 'today', label: 'Today', icon: 'calendar-today' },
+    { key: 'upcoming', label: 'Upcoming', icon: 'clock-outline' },
+    { key: 'completed', label: 'Completed', icon: 'check-circle' },
+  ];
+
+  useEffect(() => {
+    filterSessions(selectedFilter);
+  }, [selectedFilter, sessions]);
+
+  const filterSessions = (filter) => {
+    let filtered = sessions;
+    const today = new Date().toISOString().split('T')[0];
+
+    switch (filter) {
+      case 'today':
+        filtered = sessions.filter(session => session.date === today);
+        break;
+      case 'upcoming':
+        filtered = sessions.filter(session => session.status === 'upcoming');
+        break;
+      case 'completed':
+        filtered = sessions.filter(session => session.status === 'completed');
+        break;
+      default:
+        filtered = sessions;
+    }
+
+    setFilteredSessions(filtered);
+  };
+
+  const handleSessionPress = (session) => {
+    setSelectedSession(session);
+    setModalVisible(true);
+  };
+
+  const handleJoinSession = (session) => {
+    Alert.alert(
+      'Join Session',
+      `Join the ${session.type} session with ${session.clientName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Join', onPress: () => {
+          // Here you would integrate with your video calling solution
+          Alert.alert('Success', 'Joining session...');
+        }}
+      ]
+    );
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Fetch new sessions from API
-    setTimeout(() => setRefreshing(false), 1000);
+    // Simulate API call
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
-  const getFilteredSessions = useMemo(() => {
-    switch (filter) {
-      case 'today':
-        return sessions.filter(s => s.isToday);
-      case 'upcoming':
-        return sessions.filter(s => s.status === 'scheduled' && !s.isToday);
-      case 'completed':
-        return sessions.filter(s => s.status === 'completed');
-      default:
-        return sessions;
-    }
-  }, [sessions, filter]);
-
-  const handleJoinSession = useCallback((session) => {
-    Alert.alert(
-      'Join Session',
-      `Start video session with ${session.clientName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Join',
-          onPress: () => {
-            // Navigate to video call screen or open external video app
-            Alert.alert('Joining Session', 'Opening video session...');
-          }
-        }
-      ]
-    );
-  }, []);
-
-  const handleViewDetails = useCallback((session) => {
-    setSelectedSession(session);
-    setModalVisible(true);
-  }, []);
-
-  const handleReschedule = useCallback((session) => {
-    Alert.alert(
-      'Reschedule Session',
-      `Do you want to reschedule the session with ${session.clientName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reschedule',
-          onPress: () => {
-            // Navigate to reschedule screen
-            Alert.alert('Reschedule', 'Reschedule functionality would open here');
-          }
-        }
-      ]
-    );
-  }, []);
-
-  const handleCancel = useCallback((session) => {
-    Alert.alert(
-      'Cancel Session',
-      `Are you sure you want to cancel the session with ${session.clientName}?`,
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: () => {
-            setSessions(sessions.map(s => 
-              s.id === session.id ? { ...s, status: 'cancelled' } : s
-            ));
-            Alert.alert('Session Cancelled', 'The client has been notified.');
-          }
-        }
-      ]
-    );
-  }, [sessions, setSessions]);
-
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" />
+      
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Sessions</Text>
-        <Text style={styles.headerSubtitle}>
-          {sessions.filter(s => s.isToday).length} sessions today
-        </Text>
+        <Text style={styles.headerTitle}>Sessions</Text>
       </View>
 
-      {/* Filter */}
-      <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {[
-            { key: 'all', label: `All (${sessions.length})` },
-            { key: 'today', label: `Today (${sessions.filter(s => s.isToday).length})` },
-            { key: 'upcoming', label: `Upcoming (${sessions.filter(s => s.status === 'scheduled' && !s.isToday).length})` },
-            { key: 'completed', label: `Completed (${sessions.filter(s => s.status === 'completed').length})` }
-          ].map((filterOption) => (
+      {/* Filters */}
+      <View style={styles.filtersContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersContent}
+        >
+          {filters.map((filter) => (
             <TouchableOpacity
-              key={filterOption.key}
+              key={filter.key}
               style={[
                 styles.filterButton,
-                filter === filterOption.key && styles.activeFilterButton
+                selectedFilter === filter.key && styles.filterButtonActive
               ]}
-              onPress={() => setFilter(filterOption.key)}
+              onPress={() => setSelectedFilter(filter.key)}
             >
+              <MaterialCommunityIcons 
+                name={filter.icon} 
+                size={14} 
+                color={selectedFilter === filter.key ? '#fff' : '#666'} 
+              />
               <Text style={[
-                styles.filterButtonText,
-                filter === filterOption.key && styles.activeFilterButtonText
+                styles.filterText,
+                selectedFilter === filter.key && styles.filterTextActive
               ]}>
-                {filterOption.label}
+                {filter.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -404,351 +293,311 @@ export default function Sessions() {
       </View>
 
       {/* Sessions List */}
-      <FlatList 
-        style={styles.sessionsList}
-        data={getFilteredSessions}
-        renderItem={({ item: session }) => (
-          <SessionCard
-            session={session}
-            onJoinSession={handleJoinSession}
-            onViewDetails={handleViewDetails}
-            onReschedule={handleReschedule}
-            onCancel={handleCancel}
-          />
-        )}
-        keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="calendar-blank" size={64} color="#ccc" />
-            <Text style={styles.emptyStateTitle}>No sessions found</Text>
-            <Text style={styles.emptyStateSubtitle}>
-              {filter === 'all' 
-                ? 'You have no sessions scheduled at the moment.'
-                : `No ${filter} sessions found.`}
-            </Text>
-          </View>
-        )}
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={10}
-      />
+      {filteredSessions.length > 0 ? (
+        <FlatList
+          data={filteredSessions}
+          renderItem={({ item }) => (
+            <SessionCard
+              session={item}
+              onPress={handleSessionPress}
+              onJoin={handleJoinSession}
+            />
+          )}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.sessionsContent}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          style={styles.sessionsList}
+        />
+      ) : (
+        <View style={styles.emptyState}>
+          <MaterialCommunityIcons name="calendar-remove" size={64} color="#ccc" />
+          <Text style={styles.emptyStateTitle}>No Sessions Found</Text>
+          <Text style={styles.emptyStateText}>
+            {selectedFilter === 'all' 
+              ? 'You have no sessions scheduled yet.' 
+              : `No ${selectedFilter} sessions found.`}
+          </Text>
+        </View>
+      )}
 
       {/* Session Details Modal */}
       <SessionDetailsModal
         visible={modalVisible}
         session={selectedSession}
-        onClose={() => setModalVisible(false)}
-        onJoinSession={handleJoinSession}
+        onClose={() => {
+          setModalVisible(false);
+          setSelectedSession(null);
+        }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-    marginTop: 35,
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    backgroundColor: '#fff',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 50 : 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: 'rgba(224, 224, 224, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#003087',
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
+  filtersContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 8,
   },
-  filterContainer: {
-    backgroundColor: '#fff',
-    paddingVertical: 15,
+  filtersContent: {
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    gap: 8,
   },
   filterButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F0',
-    marginRight: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    marginRight: 8,
+    height: 28,
   },
-  activeFilterButton: {
+  filterButtonActive: {
     backgroundColor: '#007AFF',
   },
-  filterButtonText: {
-    fontSize: 14,
-    color: '#666',
+  filterText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#666',
+    marginLeft: 4,
   },
-  activeFilterButtonText: {
+  filterTextActive: {
     color: '#fff',
   },
   sessionsList: {
     flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  sessionsContent: {
     padding: 20,
+    flexGrow: 1,
   },
   sessionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 15,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
   },
-  clientInfo: {
+  sessionClientInfo: {
     flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  sessionAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
-  clientDetails: {
+  sessionDetails: {
     flex: 1,
   },
-  clientName: {
+  sessionClient: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 2,
+    letterSpacing: -0.2,
   },
   sessionType: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginTop: 2,
+    marginBottom: 3,
+    fontWeight: '500',
   },
-  sessionId: {
-    fontSize: 12,
+  sessionDateTime: {
+    fontSize: 11,
     color: '#999',
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  sessionDetails: {
-    marginBottom: 15,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
-    flex: 1,
+    fontWeight: '500',
   },
   sessionActions: {
+    alignItems: 'flex-end',
+  },
+  statusBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginBottom: 6,
   },
-  detailsButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  detailsButtonText: {
-    color: '#007AFF',
-    fontSize: 14,
+  statusText: {
+    fontSize: 11,
     fontWeight: '600',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginLeft: 3,
   },
   joinButton: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginRight: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   joinButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    marginLeft: 4,
-  },
-  rescheduleButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  cancelButton: {
-    padding: 8,
+    marginLeft: 3,
   },
   emptyState: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-    paddingVertical: 60,
+    alignItems: 'center',
+    paddingTop: 100,
+    minHeight: height * 0.5,
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#666',
+    fontWeight: '700',
+    color: '#333',
     marginTop: 16,
+    marginBottom: 8,
   },
-  emptyStateSubtitle: {
+  emptyStateText: {
     fontSize: 14,
-    color: '#999',
+    color: '#666',
     textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 40,
+    lineHeight: 20,
   },
-
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    marginTop: 20,
+    borderBottomColor: 'rgba(224, 224, 224, 0.3)',
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
   modalContent: {
     flex: 1,
     padding: 20,
   },
   modalSection: {
-    marginBottom: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  clientInfoSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  modalAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 12,
   },
   modalClientName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalClientAge: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
   },
   modalSessionType: {
     fontSize: 14,
     color: '#007AFF',
-    marginTop: 2,
     fontWeight: '600',
   },
-  modalSectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  modalInfoGrid: {
+  modalInfoRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  modalInfoItem: {
-    width: '50%',
-    marginBottom: 15,
-  },
-  modalInfoLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  modalInfoValue: {
-    fontSize: 15,
+  modalInfoText: {
+    fontSize: 16,
     color: '#333',
-    fontWeight: '600',
+    marginLeft: 12,
+    fontWeight: '500',
   },
   modalNotes: {
-    fontSize: 15,
-    color: '#666',
-    lineHeight: 22,
-    backgroundColor: '#F8F9FA',
-    padding: 15,
-    borderRadius: 8,
-  },
-  modalSubtext: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 10,
-  },
-  viewHistoryButton: {
-    backgroundColor: '#F0F0F0',
-    padding: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  viewHistoryButtonText: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '600',
+    lineHeight: 20,
   },
   modalActions: {
+    flexDirection: 'row',
     padding: 20,
+    gap: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: 'rgba(224, 224, 224, 0.3)',
+  },
+  modalRescheduleButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    alignItems: 'center',
+  },
+  modalRescheduleButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   modalJoinButton: {
-    flexDirection: 'row',
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
     backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   modalJoinButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
+    fontWeight: '700',
   },
 });

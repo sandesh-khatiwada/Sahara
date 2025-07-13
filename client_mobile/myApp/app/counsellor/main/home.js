@@ -22,16 +22,14 @@ const { width } = Dimensions.get('window');
 const upcomingSessions = [
   {
     id: '1',
-    clientName: 'Aayusha K.',
-    avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
+    clientName: 'Aayusha Karki',
     type: 'Anxiety Counseling',
     date: 'Today',
     time: '10:00 AM',
   },
   {
     id: '2',
-    clientName: 'John D.',
-    avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
+    clientName: 'John Doe',
     type: 'Depression Support',
     date: 'Today',
     time: '2:00 PM',
@@ -41,15 +39,13 @@ const upcomingSessions = [
 const pendingRequests = [
   {
     id: '1',
-    clientName: 'Sarah M.',
-    avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
+    clientName: 'Sarah Miller',
     issue: 'Stress Management',
     requestedTime: '3:00 PM Today',
   },
   {
     id: '2',
-    clientName: 'Mike J.',
-    avatar: 'https://randomuser.me/api/portraits/men/4.jpg',
+    clientName: 'Mike Johnson',
     issue: 'Relationship Issues',
     requestedTime: '4:00 PM Tomorrow',
   },
@@ -57,7 +53,7 @@ const pendingRequests = [
 
 const CounsellorHeader = ({ counsellorData, onLogout }) => (
   <View style={styles.header}>
-    <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+    <StatusBar backgroundColor="transparent" barStyle="dark-content" />
     <View style={styles.headerTop}>
       <View style={styles.logoContainer}>
         <Image 
@@ -65,81 +61,102 @@ const CounsellorHeader = ({ counsellorData, onLogout }) => (
           style={styles.logo}
           resizeMode="contain"
         />
+        <View style={styles.brandContainer}>
+          <Text style={styles.brandText}>Sahara</Text>
+          <Text style={styles.brandSubtext}>Mental Health</Text>
+        </View>
       </View>
       <View style={styles.headerActions}>
-        <TouchableOpacity 
-          style={styles.notificationButton}
-          onPress={() => router.push('/counsellor/main/notifications')}
-        >
-          <MaterialCommunityIcons name="bell-outline" size={24} color="#003087" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
-        </TouchableOpacity>
         <TouchableOpacity 
           style={styles.profileButton}
           onPress={() => router.push('/counsellor/main/profile')}
         >
-          <Image 
-            source={{ 
-              uri: counsellorData?.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
-            }} 
-            style={styles.profilePhoto} 
-          />
+          <View style={styles.profileContainer}>
+            <Image 
+              source={{ 
+                uri: counsellorData?.profilePhoto || 'https://randomuser.me/api/portraits/women/8.jpg' 
+              }} 
+              style={styles.profilePhoto} 
+            />
+            <View style={styles.onlineIndicator} />
+          </View>
         </TouchableOpacity>
       </View>
     </View>
     <View style={styles.separatorLine} />
     <View style={styles.greetingContainer}>
-      <Text style={styles.greeting}>Welcome Dr. {counsellorData?.fullName || 'Counsellor'} 👨‍⚕️</Text>
-      <Text style={styles.message}>
-        "Thank you for making a difference in people's lives. Your dedication helps heal hearts and minds. 💙"
-      </Text>
+      <View style={styles.greetingContent}>
+        <View style={styles.greetingIcon}>
+          <MaterialCommunityIcons name="hand-wave" size={24} color="#FF9800" />
+        </View>
+        <View style={styles.greetingText}>
+          <Text style={styles.greeting}>Welcome Dr. {counsellorData?.fullName || 'Counsellor'}</Text>
+          <Text style={styles.message}>
+            "Thank you for making a difference in people's lives. Your dedication helps heal hearts and minds. 💙"
+          </Text>
+        </View>
+      </View>
     </View>
   </View>
 );
 
 const StatCard = ({ icon, title, value, color, onPress }) => (
-  <TouchableOpacity style={[styles.statCard, { borderLeftColor: color }]} onPress={onPress}>
-    <View style={[styles.statIconContainer, { backgroundColor: color + '20' }]}>
-      <MaterialCommunityIcons name={icon} size={24} color={color} />
+  <TouchableOpacity style={styles.statCard} onPress={onPress}>
+    <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
+      <MaterialCommunityIcons name={icon} size={28} color={color} />
     </View>
     <View style={styles.statContent}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
     </View>
+    <View style={styles.statArrow}>
+      <MaterialCommunityIcons name="chevron-right" size={20} color={color} />
+    </View>
   </TouchableOpacity>
 );
 
 const SessionCard = ({ session }) => (
-  <TouchableOpacity style={styles.sessionCard}>
-    <Image source={{ uri: session.avatar }} style={styles.sessionAvatar} />
-    <View style={styles.sessionDetails}>
-      <Text style={styles.sessionClient}>{session.clientName}</Text>
-      <Text style={styles.sessionType}>{session.type}</Text>
-      <Text style={styles.sessionTime}>{session.date} • {session.time}</Text>
+  <View style={styles.sessionCard}>
+    <View style={styles.sessionHeader}>
+      <View style={styles.sessionClientInfo}>
+        <View style={styles.sessionAvatar}>
+          <MaterialCommunityIcons name="account" size={20} color="#007AFF" />
+        </View>
+        <View style={styles.sessionDetails}>
+          <Text style={styles.sessionClient}>{session.clientName}</Text>
+          <Text style={styles.sessionType}>{session.type}</Text>
+          <Text style={styles.sessionTime}>{session.date} • {session.time}</Text>
+        </View>
+      </View>
+      <TouchableOpacity style={styles.joinButton}>
+        <MaterialCommunityIcons name="video" size={20} color="#fff" />
+        <Text style={styles.joinButtonText}>Join</Text>
+      </TouchableOpacity>
     </View>
-    <TouchableOpacity style={styles.joinButton}>
-      <MaterialCommunityIcons name="video" size={20} color="#fff" />
-    </TouchableOpacity>
-  </TouchableOpacity>
+  </View>
 );
 
 const RequestCard = ({ request }) => (
   <View style={styles.requestCard}>
-    <Image source={{ uri: request.avatar }} style={styles.requestAvatar} />
-    <View style={styles.requestDetails}>
-      <Text style={styles.requestClient}>{request.clientName}</Text>
-      <Text style={styles.requestIssue}>{request.issue}</Text>
-      <Text style={styles.requestTime}>{request.requestedTime}</Text>
-    </View>
-    <View style={styles.requestActions}>
-      <TouchableOpacity style={styles.acceptButton}>
-        <MaterialCommunityIcons name="check" size={18} color="#fff" />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.rejectButton}>
-        <MaterialCommunityIcons name="close" size={18} color="#fff" />
-      </TouchableOpacity>
+    <View style={styles.requestHeader}>
+      <View style={styles.requestClientInfo}>
+        <View style={styles.requestAvatar}>
+          <MaterialCommunityIcons name="account-heart" size={18} color="#E91E63" />
+        </View>
+        <View style={styles.requestDetails}>
+          <Text style={styles.requestClient}>{request.clientName}</Text>
+          <Text style={styles.requestIssue}>{request.issue}</Text>
+          <Text style={styles.requestTime}>{request.requestedTime}</Text>
+        </View>
+      </View>
+      <View style={styles.requestActions}>
+        <TouchableOpacity style={styles.acceptButton}>
+          <MaterialCommunityIcons name="check" size={18} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.rejectButton}>
+          <MaterialCommunityIcons name="close" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
     </View>
   </View>
 );
@@ -150,8 +167,7 @@ export default function CounsellorHome() {
   const [todayStats, setTodayStats] = useState({
     sessions: 5,
     newRequests: 3,
-    totalClients: 24,
-    revenue: '₹2,400'
+    totalClients: 24
   });
 
   useEffect(() => {
@@ -171,11 +187,6 @@ export default function CounsellorHome() {
       }
     })();
   }, []);
-
-//testing connection----
-
-
-
 
   const handleLogout = async () => {
     Alert.alert(
@@ -213,187 +224,178 @@ export default function CounsellorHome() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <CounsellorHeader counsellorData={counsellorData} onLogout={handleLogout} />
-        <View style={styles.content}>
-          {/* Today's Overview */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Today's Overview</Text>
-            <View style={styles.statsContainer}>
-              <StatCard
-                icon="calendar-check"
-                title="Sessions"
-                value={todayStats.sessions}
-                color="#4CAF50"
-                onPress={() => router.push('/counsellor/main/sessions')}
-              />
-              <StatCard
-                icon="account-plus"
-                title="New Requests"
-                value={todayStats.newRequests}
-                color="#FF9800"
-                onPress={() => router.push('/counsellor/main/requests')}
-              />
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <CounsellorHeader counsellorData={counsellorData} onLogout={handleLogout} />
+          <View style={styles.content}>
+            {/* Today's Overview */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Today's Overview</Text>
+              <View style={styles.statsGrid}>
+                <StatCard
+                  icon="calendar-check"
+                  title="Sessions"
+                  value={todayStats.sessions}
+                  color="#4CAF50"
+                  onPress={() => router.push('/counsellor/main/sessions')}
+                />
+                <StatCard
+                  icon="account-plus"
+                  title="New Requests"
+                  value={todayStats.newRequests}
+                  color="#FF9800"
+                  onPress={() => router.push('/counsellor/main/requests')}
+                />
+                <StatCard
+                  icon="account-group"
+                  title="Total Clients"
+                  value={todayStats.totalClients}
+                  color="#2196F3"
+                  onPress={() => router.push('/counsellor/main/clients')}
+                />
+              </View>
             </View>
-            <View style={styles.statsContainer}>
-              <StatCard
-                icon="account-group"
-                title="Total Clients"
-                value={todayStats.totalClients}
-                color="#2196F3"
-                onPress={() => router.push('/counsellor/main/clients')}
-              />
-              <StatCard
-                icon="currency-inr"
-                title="Today's Revenue"
-                value={todayStats.revenue}
-                color="#9C27B0"
-                onPress={() => router.push('/counsellor/main/earnings')}
-              />
+
+            {/* Upcoming Sessions */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
+                <TouchableOpacity onPress={() => router.push('/counsellor/main/sessions')}>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              </View>
+              {upcomingSessions.slice(0, 2).map((session) => (
+                <SessionCard key={session.id} session={session} />
+              ))}
             </View>
-          </View>
-          {/* Upcoming Sessions */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
-              <TouchableOpacity onPress={() => router.push('/counsellor/main/sessions')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
+
+            {/* Pending Requests */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Pending Requests</Text>
+                <TouchableOpacity onPress={() => router.push('/counsellor/main/requests')}>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              </View>
+              {pendingRequests.slice(0, 2).map((request) => (
+                <RequestCard key={request.id} request={request} />
+              ))}
             </View>
-            {upcomingSessions.slice(0, 2).map((session) => (
-              <SessionCard key={session.id} session={session} />
-            ))}
-          </View>
-          {/* Pending Requests */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Pending Requests</Text>
-              <TouchableOpacity onPress={() => router.push('/counsellor/main/requests')}>
-                <Text style={styles.seeAllText}>Manage All</Text>
-              </TouchableOpacity>
-            </View>
-            {pendingRequests.map((request) => (
-              <RequestCard key={request.id} request={request} />
-            ))}
-          </View>
-          {/* Quick Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.quickActions}>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/sessions')}
-              >
-                <MaterialCommunityIcons name="video-plus" size={32} color="#4CAF50" />
-                <Text style={styles.quickActionText}>Start Session</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/availability')}
-              >
-                <MaterialCommunityIcons name="calendar-edit" size={32} color="#2196F3" />
-                <Text style={styles.quickActionText}>Set Availability</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/notes')}
-              >
-                <MaterialCommunityIcons name="note-plus" size={32} color="#FF9800" />
-                <Text style={styles.quickActionText}>Add Notes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
-                onPress={() => router.push('/counsellor/main/profile')}
-              >
-                <MaterialCommunityIcons name="account-edit" size={32} color="#9C27B0" />
-                <Text style={styles.quickActionText}>Edit Profile</Text>
-              </TouchableOpacity>
+
+            {/* Quick Actions */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <View style={styles.quickActions}>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/availability')}
+                >
+                  <MaterialCommunityIcons name="calendar-clock" size={32} color="#007AFF" />
+                  <Text style={styles.quickActionText}>Manage Availability</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/sessions')}
+                >
+                  <MaterialCommunityIcons name="video-plus" size={32} color="#4CAF50" />
+                  <Text style={styles.quickActionText}>Schedule Session</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/profile')}
+                >
+                  <MaterialCommunityIcons name="account-cog" size={32} color="#FF9800" />
+                  <Text style={styles.quickActionText}>Profile Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickActionCard}
+                  onPress={() => router.push('/counsellor/main/history')}
+                >
+                  <MaterialCommunityIcons name="chart-line" size={32} color="#9C27B0" />
+                  <Text style={styles.quickActionText}>View Analytics</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f8f9fa',
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    marginTop: Platform.OS === 'android' ? 35 : 0,
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Space for mobile navigation
+    paddingBottom: 120,
   },
   header: {
-    backgroundColor: '#fff',
-    paddingTop: 10,
-    paddingBottom: 15,
-    paddingHorizontal: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 3px 3px rgba(0,0,0,0.1)',
-      },
-    }),
-    zIndex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(20px)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(224, 224, 224, 0.3)',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   logoContainer: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   logo: {
-    width: width * 0.3,
-    height: 35,
+    width: 36,
+    height: 36,
+    marginRight: 12,
+  },
+  brandContainer: {
+    alignItems: 'flex-start',
+  },
+  brandText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.3,
+  },
+  brandSubtext: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    marginTop: -2,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 15,
-  },
-  notificationButton: {
-    position: 'relative',
-    padding: 8,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#FF4444',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   profileButton: {
-    padding: 2,
+    marginLeft: 16,
+  },
+  profileContainer: {
+    position: 'relative',
   },
   profilePhoto: {
     width: 40,
@@ -402,284 +404,331 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#007AFF',
   },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
   separatorLine: {
     height: 1,
-    backgroundColor: '#E0E0E0',
-    marginTop: 10,
+    backgroundColor: 'rgba(224, 224, 224, 0.5)',
+    marginVertical: 8,
   },
   greetingContainer: {
-    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 122, 255, 0.05)',
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  greetingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  greetingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  greetingText: {
+    flex: 1,
   },
   greeting: {
-    fontSize: width < 375 ? 18 : 20,
-    fontWeight: 'bold',
-    color: '#003087',
-    marginBottom: 5,
-    lineHeight: width < 375 ? 22 : 24,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
   message: {
-    fontSize: width < 375 ? 12 : 14,
+    fontSize: 14,
     color: '#666',
-    lineHeight: width < 375 ? 16 : 18,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   content: {
-    padding: 16,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
   section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: width < 375 ? 18 : 20,
-    fontWeight: 'bold',
-    color: '#003087',
-    marginBottom: 12,
+    marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.4,
   },
   seeAllText: {
     color: '#007AFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
-    gap: 8,
+    gap: 12,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    minWidth: (width - 56) / 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    borderLeftWidth: 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 8px 4px rgba(0,0,0,0.08)',
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
     minHeight: 80,
   },
   statIconContainer: {
-    marginRight: 12,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   statContent: {
     flex: 1,
   },
   statValue: {
-    fontSize: width < 375 ? 20 : 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
   },
   statTitle: {
-    fontSize: width < 375 ? 10 : 12,
+    fontSize: 12,
     color: '#666',
     marginTop: 2,
+    fontWeight: '500',
+  },
+  statArrow: {
+    marginLeft: 8,
   },
   sessionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
-    padding: 16,
+    padding: 18,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sessionClientInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-      },
-      android: {
-        elevation: 5,
-      },
-      web: {
-        boxShadow: '0 8px 5px rgba(0,0,0,0.1)',
-      },
-    }),
-    borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
+    flex: 1,
   },
   sessionAvatar: {
-    width: width < 375 ? 45 : 50,
-    height: width < 375 ? 45 : 50,
-    borderRadius: width < 375 ? 22.5 : 25,
-    marginRight: 16,
-    borderWidth: 2,
-    borderColor: '#E8F5E8',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   sessionDetails: {
     flex: 1,
-    paddingRight: 8,
   },
   sessionClient: {
-    fontSize: width < 375 ? 14 : 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
     marginBottom: 2,
+    letterSpacing: -0.2,
   },
   sessionType: {
-    fontSize: width < 375 ? 12 : 14,
+    fontSize: 14,
     color: '#666',
     marginBottom: 4,
+    fontWeight: '500',
   },
   sessionTime: {
-    fontSize: width < 375 ? 11 : 12,
+    fontSize: 12,
     color: '#4CAF50',
     fontWeight: '600',
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
   joinButton: {
+    flexDirection: 'row',
     backgroundColor: '#4CAF50',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4CAF50',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 4px 3px rgba(76,175,80,0.3)',
-      },
-    }),
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  joinButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 4,
   },
   requestCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  requestClientInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 4px 3px rgba(0,0,0,0.1)',
-      },
-    }),
+    flex: 1,
   },
   requestAvatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    marginRight: 15,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(233, 30, 99, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   requestDetails: {
     flex: 1,
   },
   requestClient: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 2,
+    letterSpacing: -0.2,
   },
   requestIssue: {
     fontSize: 14,
     color: '#666',
-    marginVertical: 2,
+    marginBottom: 4,
+    fontWeight: '500',
   },
   requestTime: {
     fontSize: 12,
     color: '#FF9800',
     fontWeight: '600',
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
   },
   requestActions: {
     flexDirection: 'row',
+    gap: 8,
   },
   acceptButton: {
     backgroundColor: '#4CAF50',
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   rejectButton: {
     backgroundColor: '#F44336',
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#F44336',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
   },
   quickActionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
-    padding: 20,
-    width: (width - 44) / 2, // Responsive width accounting for padding and gap
+    padding: 18,
+    width: (width - 52) / 2,
     minHeight: 100,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 8px 4px rgba(0,0,0,0.08)',
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    marginBottom: 12,
   },
   quickActionText: {
-    fontSize: width < 375 ? 12 : 14,
-    color: '#333',
+    fontSize: 14,
+    color: '#1a1a1a',
     fontWeight: '600',
-    marginTop: 8,
+    marginTop: 12,
     textAlign: 'center',
     lineHeight: 18,
+    letterSpacing: -0.1,
   },
 });
-
-// Export the CounsellorHome component as default

@@ -49,6 +49,7 @@ client_web/*.log
 client_web/coverage/
 
 # React Native (client_mobile)
+client_mobile/myApp/.env
 client_mobile/node_modules/
 client_mobile/.expo/
 client_mobile/.expo-shared/

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -11,13 +11,21 @@ import {
   Modal,
   Switch,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { API_BASE_URL } from '@env';
+import { useNavbar } from './_layout';
 
+const { width } = Dimensions.get('window');
+
+// Default fallback image
+const DEFAULT_PROFILE_IMAGE = 'https://randomuser.me/api/portraits/women/8.jpg';
+
+// Time slots configuration from availability.js
 const ProfileSection = ({ title, children }) => (
   <View style={styles.section}>
     <Text style={styles.sectionTitle}>{title}</Text>
@@ -83,34 +91,32 @@ const EditModal = ({ visible, title, value, onClose, onSave, multiline = false, 
   );
 };
 
+
+
 export default function CounsellorProfile() {
   const [counsellorData, setCounsellorData] = useState({
-    fullName: 'Dr. Sarah Wilson',
-    email: 'sarah.wilson@sahara.com',
-    phone: '+1 234 567 8900',
-    designation: 'Clinical Psychologist',
-    experience: '8 years',
-    chargePerHour: '150',
-    bio: 'Experienced clinical psychologist specializing in anxiety, depression, and trauma therapy. I use evidence-based approaches including CBT and mindfulness techniques.',
-    qualifications: 'PhD in Clinical Psychology, Licensed Clinical Psychologist',
-    specializations: ['Anxiety Disorders', 'Depression', 'Trauma Therapy', 'CBT'],
-    languages: ['English', 'Spanish'],
-    availability: {
-      monday: { enabled: true, start: '09:00', end: '17:00' },
-      tuesday: { enabled: true, start: '09:00', end: '17:00' },
-      wednesday: { enabled: true, start: '09:00', end: '17:00' },
-      thursday: { enabled: true, start: '09:00', end: '17:00' },
-      friday: { enabled: true, start: '09:00', end: '17:00' },
-      saturday: { enabled: false, start: '09:00', end: '17:00' },
-      sunday: { enabled: false, start: '09:00', end: '17:00' },
-    },
+    fullName: '',
+    email: '',
+    phone: '',
+    designation: '',
+    chargePerHour: 0,
+    bio: '', // Not in backend model - optional
+    qualifications: '', // Not in backend model - optional
+    experience: '', // Not in backend model - optional
+    specializations: [], // Not in backend model - optional
+    languages: [], // Not in backend model - optional
+    availability: [], // Backend uses array structure
     notifications: {
       sessionReminders: true,
       newRequests: true,
       clientMessages: true,
       marketing: false,
     },
-    profilePhoto: 'https://randomuser.me/api/portraits/women/8.jpg',
+    profilePhoto: null, // Backend uses object structure
+    esewaAccountId: '', // Backend field
+    documents: [], // Backend field
+    isVerified: false, // Backend field
+    isActive: true, // Backend field
   });
 
   const [editModal, setEditModal] = useState({
@@ -122,8 +128,47 @@ export default function CounsellorProfile() {
     keyboardType: 'default',
   });
 
-  const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false);
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  const { hideNavbar, showNavbar } = useNavbar();
+  const scrollY = useRef(0);
+  const scrollDirection = useRef(null);
+
+  const getProfileImageUri = () => {
+    if (imageError) return DEFAULT_PROFILE_IMAGE;
+    
+    if (counsellorData?.profilePhoto) {
+      if (typeof counsellorData.profilePhoto === 'string') {
+        return counsellorData.profilePhoto;
+      }
+      if (typeof counsellorData.profilePhoto === 'object' && counsellorData.profilePhoto.path) {
+        // Backend returns profilePhoto as an object with path property
+        return counsellorData.profilePhoto.path.startsWith('http') 
+          ? counsellorData.profilePhoto.path 
+          : `${API_BASE_URL}${counsellorData.profilePhoto.path}`;
+      }
+    }
+    return DEFAULT_PROFILE_IMAGE;
+  };
+
+  const handleScroll = (event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const direction = currentScrollY > scrollY.current ? 'down' : 'up';
+    
+    if (direction !== scrollDirection.current) {
+      scrollDirection.current = direction;
+      
+      if (direction === 'down' && currentScrollY > 50) {
+        hideNavbar();
+      } else if (direction === 'up' || currentScrollY < 50) {
+        showNavbar();
+      }
+    }
+    
+    scrollY.current = currentScrollY;
+  };
 
   // Logout handler: clears all tokens and navigates to login
   const handleLogout = () => {
@@ -159,7 +204,7 @@ export default function CounsellorProfile() {
 
   const loadCounsellorData = async () => {
     try {
-      // Try to get counsellor data from either storage location
+      // First, try to get counsellor data from AsyncStorage
       let data = await AsyncStorage.getItem('counsellorData');
       if (!data) {
         // Fallback to check user data for counsellor role
@@ -167,17 +212,38 @@ export default function CounsellorProfile() {
         if (userData) {
           const parsedUserData = JSON.parse(userData);
           if (parsedUserData.role === 'Counsellor') {
-            data = JSON.stringify(parsedUserData);
+            // Extract counsellor data from login response structure
+            data = JSON.stringify(parsedUserData.Counsellor || parsedUserData);
           }
         }
       }
-      
+
       if (data) {
         const parsedData = JSON.parse(data);
-        setCounsellorData(prev => ({ ...prev, ...parsedData }));
+        
+        // Process profile photo from backend structure
+        let processedData = { 
+          ...parsedData,
+          // Ensure notifications object exists
+          notifications: parsedData.notifications || {
+            sessionReminders: true,
+            newRequests: true,
+            clientMessages: true,
+            marketing: false,
+          }
+        };
+        if (parsedData.profilePhoto && typeof parsedData.profilePhoto === 'object' && parsedData.profilePhoto.path) {
+          // Backend returns profilePhoto as an object with path property
+          processedData.profilePhoto = parsedData.profilePhoto.path.startsWith('http') 
+            ? parsedData.profilePhoto.path 
+            : `${API_BASE_URL}${parsedData.profilePhoto.path}`;
+        }
+        
+        setCounsellorData(processedData);
       }
     } catch (error) {
       console.error('Error loading counsellor data:', error);
+      Alert.alert('Error', 'Failed to load profile data');
     }
   };
 
@@ -268,7 +334,7 @@ export default function CounsellorProfile() {
     }
   };
 
-  // Only keep the setTimeout version below
+
 
   return (
     <View style={styles.container}>
@@ -279,7 +345,12 @@ export default function CounsellorProfile() {
           <View style={styles.gradientBottom} />
         </View>
       )}
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -287,13 +358,11 @@ export default function CounsellorProfile() {
             <Text style={styles.headerTitle}>Profile</Text>
           </View>
           <View style={styles.headerRight}>
-             <Image
-                  source={
-                            counsellorData?.profilePhoto && typeof counsellorData.profilePhoto === 'string'
-                              ? { uri: counsellorData.profilePhoto }
-                              : { uri: 'https://randomuser.me/api/portraits/women/8.jpg' }
-                          }
-              style={styles.counsellorAvatar} 
+            <Image
+              source={{ uri: getProfileImageUri() }}
+              style={styles.counsellorAvatar}
+              onError={() => setImageError(true)}
+              defaultSource={{ uri: DEFAULT_PROFILE_IMAGE }}
             />
           </View>
         </View>
@@ -303,20 +372,18 @@ export default function CounsellorProfile() {
       <View style={styles.profileHeader}>
         <TouchableOpacity onPress={handleChangeProfilePhoto} style={styles.profilePhotoContainer}>
           <Image
-            source={
-              counsellorData?.profilePhoto && typeof counsellorData.profilePhoto === 'string'
-                ? { uri: counsellorData.profilePhoto }
-                : { uri: 'https://randomuser.me/api/portraits/women/8.jpg' }
-            }
+            source={{ uri: getProfileImageUri() }}
             style={styles.profilePhoto}
+            onError={() => setImageError(true)}
+            defaultSource={{ uri: DEFAULT_PROFILE_IMAGE }}
           />
           <View style={styles.cameraIcon}>
             <MaterialCommunityIcons name="camera" size={20} color="#fff" />
           </View>
         </TouchableOpacity>
-        <Text style={styles.profileName}>{counsellorData.fullName}</Text>
-        <Text style={styles.profileDesignation}>{counsellorData.designation}</Text>
-        <Text style={styles.profileExperience}>{counsellorData.experience} experience</Text>
+        <Text style={styles.profileName}>{counsellorData.fullName || 'Full Name'}</Text>
+        <Text style={styles.profileDesignation}>{counsellorData.designation || 'Designation'}</Text>
+        <Text style={styles.profileExperience}>{counsellorData.experience || 'Experience'} experience</Text>
       </View>
 
       {/* Personal Information */}
@@ -324,25 +391,25 @@ export default function CounsellorProfile() {
         <ProfileItem
           icon="account"
           title="Full Name"
-          value={counsellorData.fullName}
+          value={counsellorData.fullName || 'Add your full name'}
           onPress={() => handleEditField('fullName', 'Full Name')}
         />
         <ProfileItem
           icon="email"
           title="Email"
-          value={counsellorData.email}
+          value={counsellorData.email || 'Add your email'}
           onPress={() => handleEditField('email', 'Email', false, 'email-address')}
         />
         <ProfileItem
           icon="phone"
           title="Phone"
-          value={counsellorData.phone}
+          value={counsellorData.phone || 'Add your phone number'}
           onPress={() => handleEditField('phone', 'Phone', false, 'phone-pad')}
         />
         <ProfileItem
           icon="text"
           title="Bio"
-          value={counsellorData.bio.length > 50 ? counsellorData.bio.substring(0, 50) + '...' : counsellorData.bio}
+          value={counsellorData.bio && counsellorData.bio.length > 50 ? counsellorData.bio.substring(0, 50) + '...' : counsellorData.bio || 'Add your bio'}
           onPress={() => handleEditField('bio', 'Bio', true)}
         />
       </ProfileSection>
@@ -352,25 +419,25 @@ export default function CounsellorProfile() {
         <ProfileItem
           icon="school"
           title="Designation"
-          value={counsellorData.designation}
+          value={counsellorData.designation || 'Add your designation'}
           onPress={() => handleEditField('designation', 'Designation')}
         />
         <ProfileItem
           icon="calendar"
           title="Experience"
-          value={counsellorData.experience}
+          value={counsellorData.experience || 'Add your experience'}
           onPress={() => handleEditField('experience', 'Experience')}
         />
         <ProfileItem
           icon="currency-usd"
           title="Charge per Hour"
-          value={`$${counsellorData.chargePerHour}`}
+          value={`$${counsellorData.chargePerHour || '0'}`}
           onPress={() => handleEditField('chargePerHour', 'Charge per Hour', false, 'numeric')}
         />
         <ProfileItem
           icon="certificate"
           title="Qualifications"
-          value={counsellorData.qualifications.length > 50 ? counsellorData.qualifications.substring(0, 50) + '...' : counsellorData.qualifications}
+          value={counsellorData.qualifications && counsellorData.qualifications.length > 50 ? counsellorData.qualifications.substring(0, 50) + '...' : counsellorData.qualifications || 'Add your qualifications'}
           onPress={() => handleEditField('qualifications', 'Qualifications', true)}
         />
       </ProfileSection>
@@ -379,9 +446,15 @@ export default function CounsellorProfile() {
       <ProfileSection title="Settings">
         <ProfileItem
           icon="calendar-clock"
-          title="Availability"
-          value="Manage your schedule"
-          onPress={() => setAvailabilityModalVisible(true)}
+          title="Manage Availability"
+          value="Set your working hours and shifts"
+          onPress={() => router.push('/counsellor/settings/availability')}
+        />
+        <ProfileItem
+          icon="bell"
+          title="Notifications"
+          value="Manage notification settings"
+          onPress={() => setNotificationsModalVisible(true)}
         />
       </ProfileSection>
 
@@ -405,51 +478,7 @@ export default function CounsellorProfile() {
         onSave={handleSaveField}
       />
 
-      {/* Availability Modal */}
-      <Modal
-        visible={availabilityModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setAvailabilityModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setAvailabilityModalVisible(false)}>
-              <Text style={styles.modalCancel}>Close</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Availability</Text>
-            <TouchableOpacity onPress={() => setAvailabilityModalVisible(false)}>
-              <Text style={styles.modalSave}>Save</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.modalContent}>
-            {Object.entries(counsellorData.availability).map(([day, settings]) => (
-              <View key={day} style={styles.availabilityItem}>
-                <View style={styles.availabilityHeader}>
-                  <Text style={styles.availabilityDay}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
-                  <Switch
-                    value={settings.enabled}
-                    onValueChange={(value) => {
-                      setCounsellorData({
-                        ...counsellorData,
-                        availability: {
-                          ...counsellorData.availability,
-                          [day]: { ...settings, enabled: value }
-                        }
-                      });
-                    }}
-                  />
-                </View>
-                {settings.enabled && (
-                  <View style={styles.timeSlots}>
-                    <Text style={styles.timeSlot}>{settings.start} - {settings.end}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      </Modal>
+
 
       {/* Notifications Modal */}
       <Modal
@@ -469,7 +498,7 @@ export default function CounsellorProfile() {
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
-            {Object.entries(counsellorData.notifications).map(([key, value]) => (
+            {counsellorData.notifications && Object.entries(counsellorData.notifications).map(([key, value]) => (
               <View key={key} style={styles.notificationItem}>
                 <Text style={styles.notificationTitle}>
                   {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
@@ -480,7 +509,7 @@ export default function CounsellorProfile() {
                     setCounsellorData({
                       ...counsellorData,
                       notifications: {
-                        ...counsellorData.notifications,
+                        ...(counsellorData.notifications || {}),
                         [key]: newValue
                       }
                     });
@@ -488,9 +517,11 @@ export default function CounsellorProfile() {
                 />
               </View>
             ))}
+            <View style={{ height: 30 }} />
           </ScrollView>
         </View>
       </Modal>
+      
     </ScrollView>
     </View>
   );
@@ -499,7 +530,7 @@ export default function CounsellorProfile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f0f4f8ff',
     position: 'relative',
   },
   gradientBackground: {
@@ -710,16 +741,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-  },
-  timeSlots: {
-    marginTop: 10,
-  },
-  timeSlot: {
-    fontSize: 14,
-    color: '#666',
-    backgroundColor: '#F8F9FA',
-    padding: 8,
-    borderRadius: 4,
   },
 
   // Notification Styles

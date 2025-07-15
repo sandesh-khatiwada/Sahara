@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -14,7 +14,8 @@ import {
   FlatList,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useNavbar } from './_layout';
 
 const { width, height } = Dimensions.get('window');
 
@@ -158,23 +159,13 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
               <Text style={styles.modalInfoText}>{session.duration}</Text>
             </View>
           </View>
-
-          {/* Notes */}
-          {session.notes && (
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Session Notes</Text>
-              <Text style={styles.modalNotes}>{session.notes}</Text>
-            </View>
-          )}
+          <View style={{ height: 30 }} />
         </ScrollView>
 
         {/* Modal Actions */}
         {session.status === 'upcoming' && (
           <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.modalRescheduleButton}>
-              <Text style={styles.modalRescheduleButtonText}>Reschedule</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalJoinButton}>
+            <TouchableOpacity style={[styles.modalJoinButton, styles.modalJoinButtonFullWidth]}>
               <Text style={styles.modalJoinButtonText}>Join Session</Text>
             </TouchableOpacity>
           </View>
@@ -185,12 +176,34 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
 };
 
 export default function CounsellorSessions() {
+  const { filter: initialFilter } = useLocalSearchParams();
   const [sessions, setSessions] = useState(sampleSessions);
   const [filteredSessions, setFilteredSessions] = useState(sampleSessions);
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState(initialFilter || 'all');
   const [selectedSession, setSelectedSession] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const { hideNavbar, showNavbar } = useNavbar();
+  const scrollY = useRef(0);
+  const scrollDirection = useRef(null);
+
+  const handleScroll = (event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const direction = currentScrollY > scrollY.current ? 'down' : 'up';
+    
+    if (direction !== scrollDirection.current) {
+      scrollDirection.current = direction;
+      
+      if (direction === 'down' && currentScrollY > 50) {
+        hideNavbar();
+      } else if (direction === 'up' || currentScrollY < 50) {
+        showNavbar();
+      }
+    }
+    
+    scrollY.current = currentScrollY;
+  };
 
   const filters = [
     { key: 'all', label: 'All Sessions', icon: 'calendar-multiple' },
@@ -304,11 +317,13 @@ export default function CounsellorSessions() {
             />
           )}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.sessionsContent}
+          contentContainerStyle={[styles.sessionsContent, { paddingBottom: 20 }]}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
           onRefresh={onRefresh}
           style={styles.sessionsList}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         />
       ) : (
         <View style={styles.emptyState}>
@@ -338,7 +353,7 @@ export default function CounsellorSessions() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f0f4f8ff',
   },
   header: {
     paddingHorizontal: 20,
@@ -356,7 +371,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#003087',
     letterSpacing: -0.5,
   },
   filtersContainer: {
@@ -434,7 +449,7 @@ const styles = StyleSheet.create({
   sessionClient: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 2,
     letterSpacing: -0.2,
   },
@@ -517,7 +532,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
   },
   modalContent: {
     flex: 1,
@@ -537,13 +552,13 @@ const styles = StyleSheet.create({
   modalSectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 12,
   },
   modalClientName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 4,
   },
   modalSessionType: {
@@ -562,11 +577,6 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontWeight: '500',
   },
-  modalNotes: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
   modalActions: {
     flexDirection: 'row',
     padding: 20,
@@ -575,25 +585,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(224, 224, 224, 0.3)',
   },
-  modalRescheduleButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    alignItems: 'center',
-  },
-  modalRescheduleButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
   modalJoinButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
     backgroundColor: '#4CAF50',
     alignItems: 'center',
+  },
+  modalJoinButtonFullWidth: {
+    flex: 1,
+    width: '100%',
   },
   modalJoinButtonText: {
     color: '#fff',

@@ -16,9 +16,11 @@ import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
-// Define hourly time slots for each shift
+// Define hourly time slots for each shift - Updated time splits
 const timeSlots = {
   morning: [
+    { id: '07-08', time: '7:00 AM - 8:00 AM', hour: '7-8' },
+    { id: '08-09', time: '8:00 AM - 9:00 AM', hour: '8-9' },
     { id: '09-10', time: '9:00 AM - 10:00 AM', hour: '9-10' },
     { id: '10-11', time: '10:00 AM - 11:00 AM', hour: '10-11' },
     { id: '11-12', time: '11:00 AM - 12:00 PM', hour: '11-12' },
@@ -27,28 +29,25 @@ const timeSlots = {
     { id: '12-13', time: '12:00 PM - 1:00 PM', hour: '12-1' },
     { id: '13-14', time: '1:00 PM - 2:00 PM', hour: '1-2' },
     { id: '14-15', time: '2:00 PM - 3:00 PM', hour: '2-3' },
+  ],
+  evening: [
     { id: '15-16', time: '3:00 PM - 4:00 PM', hour: '3-4' },
     { id: '16-17', time: '4:00 PM - 5:00 PM', hour: '4-5' },
     { id: '17-18', time: '5:00 PM - 6:00 PM', hour: '5-6' },
   ],
-  evening: [
+  night: [
     { id: '18-19', time: '6:00 PM - 7:00 PM', hour: '6-7' },
     { id: '19-20', time: '7:00 PM - 8:00 PM', hour: '7-8' },
     { id: '20-21', time: '8:00 PM - 9:00 PM', hour: '8-9' },
   ],
-  night: [
-    { id: '21-22', time: '9:00 PM - 10:00 PM', hour: '9-10' },
-    { id: '22-23', time: '10:00 PM - 11:00 PM', hour: '10-11' },
-    { id: '23-00', time: '11:00 PM - 12:00 AM', hour: '11-12' },
-  ],
 };
 
-// Define 4 different shifts
+// Define 4 different shifts - Updated time splits
 const shifts = [
   {
     id: 'morning',
     name: 'Morning Shift',
-    time: '9:00 AM - 12:00 PM',
+    time: '7:00 AM - 12:00 PM',
     icon: 'weather-sunny',
     color: '#FF9800',
     description: 'Early morning sessions for clients who prefer morning consultations',
@@ -56,7 +55,7 @@ const shifts = [
   {
     id: 'afternoon',
     name: 'Afternoon Shift',
-    time: '12:00 PM - 6:00 PM',
+    time: '12:00 PM - 3:00 PM',
     icon: 'weather-partly-cloudy',
     color: '#2196F3',
     description: 'Peak hours for most client consultations and therapy sessions',
@@ -64,7 +63,7 @@ const shifts = [
   {
     id: 'evening',
     name: 'Evening Shift',
-    time: '6:00 PM - 9:00 PM',
+    time: '3:00 PM - 6:00 PM',
     icon: 'weather-sunset',
     color: '#FF5722',
     description: 'After-work hours for clients with busy day schedules',
@@ -72,7 +71,7 @@ const shifts = [
   {
     id: 'night',
     name: 'Night Shift',
-    time: '9:00 PM - 12:00 AM',
+    time: '6:00 PM - 9:00 PM',
     icon: 'weather-night',
     color: '#673AB7',
     description: 'Late night support for mental health needs',
@@ -125,7 +124,7 @@ const ShiftCard = ({ shift, isSelected, onToggle, selectedDays, selectedTimes, o
                   key={day.id}
                   style={[
                     styles.dayButton,
-                    isDaySelected && [styles.dayButtonActive, { backgroundColor: shift.color }]
+                    isDaySelected && [styles.dayButtonActive, { backgroundColor: '#9747FF' }]
                   ]}
                   onPress={() => onToggle(day.id)}
                 >
@@ -491,7 +490,7 @@ const styles = StyleSheet.create({
   shiftCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
-    padding: 16,
+    padding: 25,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -503,8 +502,9 @@ const styles = StyleSheet.create({
   },
   shiftCardActive: {
     borderWidth: 2,
+   borderRadius:15,
     borderColor: 'rgba(33, 150, 243, 0.3)',
-    backgroundColor: 'rgba(33, 150, 243, 0.02)',
+    
   },
   shiftHeader: {
     flexDirection: 'row',
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   shiftName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 2,
   },
   shiftTime: {
@@ -550,12 +550,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
   },
   configContainer: {
-    marginTop: 16,
-  },
-  daysContainer: {
+    marginTop: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  daysContainer: {
+    marginBottom: 16,
   },
   daysTitle: {
     fontSize: 14,

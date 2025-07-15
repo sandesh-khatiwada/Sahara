@@ -1,9 +1,19 @@
-import React from 'react';
-import { View, Text, Platform } from 'react-native';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { View, Text, Platform, Animated } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Create context for navbar visibility
+const NavbarContext = createContext({
+  isVisible: true,
+  setIsVisible: () => {},
+  hideNavbar: () => {},
+  showNavbar: () => {},
+});
+
+export const useNavbar = () => useContext(NavbarContext);
 
 const TabBarIcon = ({ name, color, size = 24 }) => {
   try {
@@ -16,6 +26,30 @@ const TabBarIcon = ({ name, color, size = 24 }) => {
 
 export default function CounsellorMainLayout() {
   const insets = useSafeAreaInsets();
+  const [isNavbarVisible, setIsNavbarVisible] = useState(true);
+  const [navbarAnimation] = useState(new Animated.Value(1));
+  
+  const hideNavbar = () => {
+    if (isNavbarVisible) {
+      setIsNavbarVisible(false);
+      Animated.timing(navbarAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+  
+  const showNavbar = () => {
+    if (!isNavbarVisible) {
+      setIsNavbarVisible(true);
+      Animated.timing(navbarAnimation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
   
   const getTabBarIcon = (routeName) => ({ color, size }) => {
     let iconName;
@@ -45,89 +79,112 @@ export default function CounsellorMainLayout() {
   
   try {
     return (
-      <View style={{ flex: 1 }}>
-        <StatusBar style="dark" />
-        <Tabs
-          screenOptions={{
-            tabBarActiveTintColor: '#007AFF',
-            tabBarInactiveTintColor: '#666',
-            tabBarStyle: {
-              backgroundColor: '#fff',
-              borderTopWidth: 1,
-              borderTopColor: '#E0E0E0',
-              height: Platform.select({
-                ios: 85,
-                android: 65,
-                default: 65
-              }),
-              paddingBottom: Platform.select({
-                ios: 25,
-                android: 10,
-                default: 10
-              }),
-              paddingTop: 8,
-              ...Platform.select({
-                ios: {
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: -2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
+      <NavbarContext.Provider value={{ 
+        isVisible: isNavbarVisible, 
+        setIsVisible: setIsNavbarVisible, 
+        hideNavbar, 
+        showNavbar 
+      }}>
+        <View style={{ flex: 1 }}>
+          <StatusBar style="dark" />
+          <Tabs
+            screenOptions={{
+              tabBarActiveTintColor: '#003087',
+              tabBarInactiveTintColor: '#00308780',
+              tabBarStyle: [
+                {
+                  position: 'absolute',
+                  backgroundColor: 'rgba(224, 231, 250, 0.9)', // Glass morphism background
+                  borderTopLeftRadius: 20,
+                  borderTopRightRadius: 20,
+                  borderTopWidth: 0,
+                  height: Platform.select({
+                    ios: 85,
+                    android: 70,
+                    default: 70
+                  }),
+                  paddingBottom: Platform.select({
+                    ios: 25,
+                    android: 5,
+                    default: 5
+                  }),
+                  paddingTop: 5,
+                  backdropFilter: 'blur(20px)', // Glass morphism blur effect
+                  ...Platform.select({
+                    ios: {
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: -2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 10,
+                    },
+                    android: {
+                      elevation: 12,
+                    },
+                    web: {
+                      boxShadow: '0 -2px 20px rgba(0,0,0,0.1)',
+                      backdropFilter: 'blur(20px)',
+                    },
+                  }),
                 },
-                android: {
-                  elevation: 8,
+                {
+                  transform: [
+                    {
+                      translateY: navbarAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [100, 0],
+                      }),
+                    },
+                  ],
                 },
-                web: {
-                  boxShadow: '0 -2px 4px rgba(0,0,0,0.1)',
-                },
-              }),
-            },
-            tabBarLabelStyle: {
-              fontSize: 11,
-              fontWeight: '600',
-              marginTop: -2,
-            },
-            headerShown: false,
-            tabBarHideOnKeyboard: Platform.OS === 'android',
-            lazy: true,
-          }}
-        >
-          <Tabs.Screen
-            name="home"
-            options={{ 
-              title: 'Dashboard',
-              tabBarIcon: getTabBarIcon('home')
+              ],
+              tabBarLabelStyle: {
+                fontSize: 11,
+                fontWeight: '600',
+                marginTop: -2,
+              },
+              headerShown: false,
+              tabBarHideOnKeyboard: Platform.OS === 'android',
+              lazy: true,
             }}
-          />
-          <Tabs.Screen
-            name="requests"
-            options={{ 
-              title: 'Requests',
-              tabBarIcon: getTabBarIcon('requests')
-            }}
-          />
-          <Tabs.Screen
-            name="sessions"
-            options={{ 
-              title: 'Sessions',
-              tabBarIcon: getTabBarIcon('sessions')
-            }}
-          />
-          <Tabs.Screen
-            name="history"
-            options={{ 
-              title: 'History',
-              tabBarIcon: getTabBarIcon('history')
-            }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{ 
-              title: 'Profile',
-              tabBarIcon: getTabBarIcon('profile')
-            }}
-          />
-        </Tabs>
-      </View>
+          >
+            <Tabs.Screen
+              name="home"
+              options={{ 
+                title: 'Dashboard',
+                tabBarIcon: getTabBarIcon('home')
+              }}
+            />
+            <Tabs.Screen
+              name="requests"
+              options={{ 
+                title: 'Requests',
+                tabBarIcon: getTabBarIcon('requests')
+              }}
+            />
+            <Tabs.Screen
+              name="sessions"
+              options={{ 
+                title: 'Sessions',
+                tabBarIcon: getTabBarIcon('sessions')
+              }}
+            />
+            <Tabs.Screen
+              name="history"
+              options={{ 
+                title: 'History',
+                tabBarIcon: getTabBarIcon('history')
+              }}
+            />
+            <Tabs.Screen
+              name="profile"
+              options={{ 
+                title: 'Profile',
+                tabBarIcon: getTabBarIcon('profile')
+              }}
+            />
+          </Tabs>
+        </View>
+      </NavbarContext.Provider>
     );
   } catch (error) {
     console.error('CounsellorMainLayout error:', error);

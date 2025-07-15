@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -16,8 +16,13 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavbar } from './_layout';
 
 const { width } = Dimensions.get('window');
+const API_BASE_URL = 'http://192.168.1.67:5001';
+
+// Default fallback image
+const DEFAULT_PROFILE_IMAGE = 'https://randomuser.me/api/portraits/women/8.jpg';
 
 // Sample data
 const upcomingSessions = [
@@ -52,56 +57,86 @@ const pendingRequests = [
   },
 ];
 
-const CounsellorHeader = ({ counsellorData, onLogout }) => (
-  <View style={styles.header}>
-    <StatusBar backgroundColor="transparent" barStyle="dark-content" />
-    <View style={styles.headerTop}>
-      <View style={styles.logoContainer}>
-        <Image 
-          source={require('../../../assets/image/SaharaAppIcon.png')} 
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <View style={styles.brandContainer}>
-          <Text style={styles.brandText}>Sahara</Text>
-          <Text style={styles.brandSubtext}>Mental Health</Text>
-        </View>
-      </View>
-      <View style={styles.headerActions}>
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => router.push('/counsellor/main/profile')}
-        >
-          <View style={styles.profileContainer}>
-            <Image
-              source={
-                counsellorData?.profilePhoto && typeof counsellorData.profilePhoto === 'string'
-                  ? { uri: counsellorData.profilePhoto }
-                  : { uri: 'https://randomuser.me/api/portraits/women/8.jpg' }
-              }
-              style={styles.profilePhoto}
-            />
-            <View style={styles.onlineIndicator} />
+const CounsellorHeader = ({ counsellorData, onLogout }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  
+  const getProfileImageUri = () => {
+    if (imageError) return DEFAULT_PROFILE_IMAGE;
+    
+    if (counsellorData?.profilePhoto) {
+      if (typeof counsellorData.profilePhoto === 'string') {
+        return counsellorData.profilePhoto;
+      }
+      if (typeof counsellorData.profilePhoto === 'object' && counsellorData.profilePhoto.path) {
+        // Backend returns profilePhoto as an object with path property
+        return counsellorData.profilePhoto.path.startsWith('http') 
+          ? counsellorData.profilePhoto.path 
+          : `${API_BASE_URL}${counsellorData.profilePhoto.path}`;
+      }
+    }
+    return DEFAULT_PROFILE_IMAGE;
+  };
+
+  return (
+    <View style={styles.header}>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" />
+      <View style={styles.headerTop}>
+        <View style={styles.logoContainer}>
+          <Image 
+            source={require('../../../assets/image/SaharaAppIcon.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <View style={styles.brandContainer}>
+            <Text style={styles.brandText}>Sahara</Text>
+            <Text style={styles.brandSubtext}>Mental Health</Text>
           </View>
-        </TouchableOpacity>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.profileButton}
+            onPress={() => router.push('/counsellor/main/profile')}
+          >
+            <View style={styles.profileContainer}>
+              {imageLoading && (
+                <View style={[styles.profilePhoto, styles.loadingContainer]}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                </View>
+              )}
+              <Image
+                source={{ uri: getProfileImageUri() }}
+                style={[styles.profilePhoto, imageLoading && { opacity: 0 }]}
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+                onLoadStart={() => setImageLoading(true)}
+                defaultSource={{ uri: DEFAULT_PROFILE_IMAGE }}
+              />
+              <View style={styles.onlineIndicator} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <View style={styles.separatorLine} />
+      <View style={styles.greetingContainer}>
+        <View style={styles.greetingContent}>
+          <View style={styles.greetingIcon}>
+            <MaterialCommunityIcons name="hand-wave" size={24} color="#FF9800" />
+          </View>
+          <View style={styles.greetingText}>
+            <Text style={styles.greeting}>Welcome Dr. {counsellorData?.fullName || 'Counsellor'}</Text>
+            <Text style={styles.message}>
+              "Thank you for making a difference in people's lives. Your dedication helps heal hearts and minds. 💙"
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
-    <View style={styles.separatorLine} />
-    <View style={styles.greetingContainer}>
-      <View style={styles.greetingContent}>
-        <View style={styles.greetingIcon}>
-          <MaterialCommunityIcons name="hand-wave" size={24} color="#FF9800" />
-        </View>
-        <View style={styles.greetingText}>
-          <Text style={styles.greeting}>Welcome Dr. {counsellorData?.fullName || 'Counsellor'}</Text>
-          <Text style={styles.message}>
-            "Thank you for making a difference in people's lives. Your dedication helps heal hearts and minds. 💙"
-          </Text>
-        </View>
-      </View>
-    </View>
-  </View>
-);
+  );
+};
 
 const StatCard = ({ icon, title, value, color, onPress }) => (
   <TouchableOpacity style={styles.statCard} onPress={onPress}>
@@ -173,6 +208,27 @@ export default function CounsellorHome() {
     totalClients: 24
   });
 
+  const { hideNavbar, showNavbar } = useNavbar();
+  const scrollY = useRef(0);
+  const scrollDirection = useRef(null);
+
+  const handleScroll = (event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const direction = currentScrollY > scrollY.current ? 'down' : 'up';
+    
+    if (direction !== scrollDirection.current) {
+      scrollDirection.current = direction;
+      
+      if (direction === 'down' && currentScrollY > 50) {
+        hideNavbar();
+      } else if (direction === 'up' || currentScrollY < 50) {
+        showNavbar();
+      }
+    }
+    
+    scrollY.current = currentScrollY;
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -184,7 +240,19 @@ export default function CounsellorHome() {
           
           // Check if user is a counsellor and has valid token
           if (parsedUserData.role === 'Counsellor' && parsedUserData.token) {
-            setCounsellorData(parsedUserData);
+            // Extract counsellor data from login response structure
+            const counsellorInfo = parsedUserData.Counsellor || parsedUserData;
+            
+            // Process profile photo from backend structure
+            let processedData = { ...counsellorInfo };
+            if (counsellorInfo.profilePhoto && typeof counsellorInfo.profilePhoto === 'object' && counsellorInfo.profilePhoto.path) {
+              // Backend returns profilePhoto as an object with path property
+              processedData.profilePhoto = counsellorInfo.profilePhoto.path.startsWith('http') 
+                ? counsellorInfo.profilePhoto.path 
+                : `${API_BASE_URL}${counsellorInfo.profilePhoto.path}`;
+            }
+            
+            setCounsellorData(processedData);
           } else {
             // Not a counsellor or invalid data, redirect to login
             Alert.alert(
@@ -293,8 +361,10 @@ export default function CounsellorHome() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 }]}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         >
           <CounsellorHeader counsellorData={counsellorData} onLogout={handleLogout} />
           <View style={styles.content}>
@@ -354,21 +424,22 @@ export default function CounsellorHome() {
 
             {/* Quick Actions */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <Text style={styles.sectionTitle}>Quick Actions</Text> 
+              
               <View style={styles.quickActions}>
                 <TouchableOpacity 
                   style={styles.quickActionCard}
-                  onPress={() => router.push('/counsellor/main/availability')}
+                  onPress={() => router.push('/counsellor/settings/availability')}
                 >
                   <MaterialCommunityIcons name="calendar-clock" size={32} color="#007AFF" />
                   <Text style={styles.quickActionText}>Manage Availability</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.quickActionCard}
-                  onPress={() => router.push('/counsellor/main/sessions')}
+                  onPress={() => router.push('/counsellor/main/sessions?filter=today')}
                 >
                   <MaterialCommunityIcons name="video-plus" size={32} color="#4CAF50" />
-                  <Text style={styles.quickActionText}>Schedule Session</Text>
+                  <Text style={styles.quickActionText}>Scheduled Sessions</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.quickActionCard}
@@ -396,7 +467,7 @@ export default function CounsellorHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f0f4f8ff',
   },
   safeArea: {
     flex: 1,
@@ -443,7 +514,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#003087',
     letterSpacing: -0.3,
   },
   brandSubtext: {
@@ -468,6 +539,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#007AFF',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    position: 'absolute',
+    zIndex: 1,
   },
   onlineIndicator: {
     position: 'absolute',
@@ -511,7 +589,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 4,
     letterSpacing: -0.2,
   },
@@ -536,13 +614,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#003087',
     letterSpacing: -0.4,
   },
   seeAllText: {
-    color: '#007AFF',
+    color: '#8C58FF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -555,6 +633,7 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop:'12',
     gap: 12,
   },
   statCard: {
@@ -562,7 +641,7 @@ const styles = StyleSheet.create({
     minWidth: (width - 56) / 3,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
-    padding: 16,
+    padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
@@ -586,13 +665,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     letterSpacing: -0.5,
   },
   statTitle: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#666',
     marginTop: 2,
     fontWeight: '500',
@@ -638,7 +717,7 @@ const styles = StyleSheet.create({
   sessionClient: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 2,
     letterSpacing: -0.2,
   },
@@ -715,7 +794,7 @@ const styles = StyleSheet.create({
   requestClient: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 2,
     letterSpacing: -0.2,
   },
@@ -766,6 +845,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   quickActions: {
+    marginTop:'15',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -789,7 +869,7 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 14,
-    color: '#1a1a1a',
+    color: '#061B36',
     fontWeight: '600',
     marginTop: 12,
     textAlign: 'center',

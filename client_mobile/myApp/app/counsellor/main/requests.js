@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -17,6 +17,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@env';
+import { useNavbar } from './_layout';
 
 // Sample data - replace with API calls
 const sampleRequests = [
@@ -135,6 +136,7 @@ const RequestCard = ({ request, onAccept, onReject, onViewDetails }) => {
         </View>
       </View>
     </View>
+    
   );
 };
 
@@ -188,6 +190,7 @@ const RequestDetailsModal = ({ visible, request, onClose, onAccept, onReject }) 
               </View>
             </View>
           </View>
+          
         </ScrollView>
 
         {/* Modal Actions */}
@@ -208,7 +211,7 @@ const RequestDetailsModal = ({ visible, request, onClose, onAccept, onReject }) 
               onClose();
             }}
           >
-            <Text style={styles.modalAcceptButtonText}>Accept & Schedule</Text>
+            <Text style={styles.modalAcceptButtonText}>Accept</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -223,6 +226,27 @@ export default function BookingRequests() {
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const { hideNavbar, showNavbar } = useNavbar();
+  const scrollY = useRef(0);
+  const scrollDirection = useRef(null);
+
+  const handleScroll = (event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const direction = currentScrollY > scrollY.current ? 'down' : 'up';
+    
+    if (direction !== scrollDirection.current) {
+      scrollDirection.current = direction;
+      
+      if (direction === 'down' && currentScrollY > 50) {
+        hideNavbar();
+      } else if (direction === 'up' || currentScrollY < 50) {
+        showNavbar();
+      }
+    }
+    
+    scrollY.current = currentScrollY;
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -318,7 +342,10 @@ export default function BookingRequests() {
       {/* Requests List */}
       <ScrollView 
         style={styles.requestsList}
+        contentContainerStyle={{ paddingBottom: 20 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {requests.length > 0 ? (
           requests.map((request) => (
@@ -358,7 +385,7 @@ export default function BookingRequests() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFE',
+    backgroundColor: '#f0f4f8ff',
     marginTop: 35,
   },
   gradientBackground: {
@@ -429,7 +456,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#003087',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
@@ -524,7 +551,7 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 4,
     letterSpacing: -0.3,
   },
@@ -558,7 +585,7 @@ const styles = StyleSheet.create({
   issueTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginLeft: 8,
     letterSpacing: -0.2,
   },
@@ -607,11 +634,12 @@ const styles = StyleSheet.create({
   viewDetailsButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(0, 122, 255, 0.2)',
   },
@@ -623,8 +651,8 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 12,
   },
   rejectButton: {
     flexDirection: 'row',
@@ -742,7 +770,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     letterSpacing: -0.5,
   },
   modalContent: {
@@ -750,7 +778,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalSection: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 1)',
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
@@ -770,7 +798,7 @@ const styles = StyleSheet.create({
   modalClientName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     letterSpacing: -0.5,
   },
   modalRequestTime: {
@@ -782,14 +810,14 @@ const styles = StyleSheet.create({
   modalSectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 12,
     letterSpacing: -0.3,
   },
   modalIssueTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#061B36',
     marginBottom: 10,
     letterSpacing: -0.3,
   },
@@ -806,7 +834,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,

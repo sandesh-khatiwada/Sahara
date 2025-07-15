@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -16,6 +16,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@env';
+import { useNavbar } from './_layout';
 
 // Sample data - replace with API calls
 const sampleHistory = [
@@ -96,7 +97,7 @@ const sampleHistory = [
   },
 ];
 
-const HistoryCard = ({ session, onEditNotes }) => {
+const HistoryCard = ({ session, onViewDetails }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return '#4CAF50';
@@ -138,9 +139,9 @@ const HistoryCard = ({ session, onEditNotes }) => {
       <View style={styles.historyHeader}>
         <View style={styles.clientInfo}>
           <View style={styles.clientDetails}>
-            <Text style={styles.clientName}>{session.clientName}</Text>
-            <Text style={styles.sessionType}>{session.type}</Text>
-            <Text style={styles.sessionDate}>{session.date} • {session.time}</Text>
+            <Text style={styles.clientName}>{session.clientName || 'Client Name'}</Text>
+            <Text style={styles.sessionType}>{session.type || 'Session Type'}</Text>
+            <Text style={styles.sessionDate}>{session.date || 'Date not available'} • {session.time || 'Time not available'}</Text>
           </View>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(session.status) }]}>
@@ -152,11 +153,11 @@ const HistoryCard = ({ session, onEditNotes }) => {
       <View style={styles.sessionInfo}>
         <View style={styles.infoRow}>
           <MaterialCommunityIcons name="clock-outline" size={16} color="#666" />
-          <Text style={styles.infoText}>{session.duration} minutes</Text>
+          <Text style={styles.infoText}>{session.duration || 0} minutes</Text>
         </View>
         <View style={styles.infoRow}>
           <MaterialCommunityIcons name="currency-inr" size={16} color="#666" />
-          <Text style={styles.infoText}>₹{session.fee}</Text>
+          <Text style={styles.infoText}>₹{session.fee || 0}</Text>
         </View>
         {session.rating && (
           <View style={styles.infoRow}>
@@ -165,15 +166,6 @@ const HistoryCard = ({ session, onEditNotes }) => {
           </View>
         )}
       </View>
-
-      {/* Notes Preview */}
-      {session.sessionNotes && (
-        <View style={styles.notesPreview}>
-          <Text style={styles.notesText} numberOfLines={2}>
-            {session.sessionNotes}
-          </Text>
-        </View>
-      )}
 
       {/* Feedback Preview */}
       {session.feedback && (
@@ -187,16 +179,12 @@ const HistoryCard = ({ session, onEditNotes }) => {
       )}
 
       {/* Actions */}
-      <View style={styles.historyActions}>
-        {session.status === 'completed' && (
-          <TouchableOpacity 
-            style={styles.editNotesButton}
-            onPress={() => onEditNotes(session)}
+      <View style={styles.historyActions}>          <TouchableOpacity 
+            style={styles.viewButton}
+            onPress={() => onViewDetails(session)}
           >
-            <MaterialCommunityIcons name="pencil" size={16} color="#007AFF" />
-            <Text style={styles.editNotesText}>Edit Notes</Text>
+            <Text style={styles.viewButtonText}>View Details</Text>
           </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -243,8 +231,8 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
           <View style={styles.modalSection}>
             <View style={styles.clientInfoSection}>
               <View>
-                <Text style={styles.modalClientName}>{session.clientName}</Text>
-                <Text style={styles.modalSessionType}>{session.type}</Text>
+                <Text style={styles.modalClientName}>{session.clientName || 'Client Name'}</Text>
+                <Text style={styles.modalSessionType}>{session.type || 'Session Type'}</Text>
               </View>
             </View>
           </View>
@@ -255,32 +243,22 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
             <View style={styles.modalInfoGrid}>
               <View style={styles.modalInfoItem}>
                 <Text style={styles.modalInfoLabel}>Date</Text>
-                <Text style={styles.modalInfoValue}>{session.date}</Text>
+                <Text style={styles.modalInfoValue}>{session.date || 'Date not available'}</Text>
               </View>
               <View style={styles.modalInfoItem}>
                 <Text style={styles.modalInfoLabel}>Time</Text>
-                <Text style={styles.modalInfoValue}>{session.time}</Text>
+                <Text style={styles.modalInfoValue}>{session.time || 'Time not available'}</Text>
               </View>
               <View style={styles.modalInfoItem}>
                 <Text style={styles.modalInfoLabel}>Duration</Text>
-                <Text style={styles.modalInfoValue}>{session.duration} minutes</Text>
+                <Text style={styles.modalInfoValue}>{session.duration || 0} minutes</Text>
               </View>
               <View style={styles.modalInfoItem}>
                 <Text style={styles.modalInfoLabel}>Fee</Text>
-                <Text style={styles.modalInfoValue}>₹{session.fee}</Text>
+                <Text style={styles.modalInfoValue}>₹{session.fee || 0}</Text>
               </View>
             </View>
           </View>
-
-          {/* Session Notes */}
-          {session.sessionNotes && (
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Session Notes</Text>
-              <View style={styles.modalNotesContainer}>
-                <Text style={styles.modalNotes}>{session.sessionNotes}</Text>
-              </View>
-            </View>
-          )}
 
           {/* Client Feedback */}
           {session.feedback && (
@@ -293,81 +271,8 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
             </View>
           )}
 
-          {/* Action Items */}
-          <View style={styles.modalSection}>
-            <Text style={styles.modalSectionTitle}>Action Items</Text>
-            <TouchableOpacity style={styles.actionItem}>
-              <MaterialCommunityIcons name="file-document-outline" size={20} color="#007AFF" />
-              <Text style={styles.actionItemText}>Generate Session Report</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionItem}>
-              <MaterialCommunityIcons name="calendar-plus" size={20} color="#4CAF50" />
-              <Text style={styles.actionItemText}>Schedule Follow-up</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionItem}>
-              <MaterialCommunityIcons name="message-text" size={20} color="#FF9800" />
-              <Text style={styles.actionItemText}>Send Follow-up Message</Text>
-            </TouchableOpacity>
-          </View>
+          
         </ScrollView>
-      </View>
-    </Modal>
-  );
-};
-
-const EditNotesModal = ({ visible, session, onClose, onSave }) => {
-  const [notes, setNotes] = useState('');
-
-  useEffect(() => {
-    if (session) {
-      setNotes(session.sessionNotes || '');
-    }
-  }, [session]);
-
-  const handleSave = () => {
-    onSave(session.id, notes);
-    onClose();
-  };
-
-  if (!session) return null;
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Edit Session Notes</Text>
-          <TouchableOpacity onPress={onClose}>
-            <MaterialCommunityIcons name="close" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.editNotesContent}>
-          <Text style={styles.editNotesLabel}>
-            Session with {session.clientName} - {session.date}
-          </Text>
-          <TextInput
-            style={styles.editNotesInput}
-            multiline
-            placeholder="Enter your session notes here..."
-            value={notes}
-            onChangeText={setNotes}
-            textAlignVertical="top"
-          />
-        </View>
-
-        <View style={styles.editNotesActions}>
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Save Notes</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </Modal>
   );
@@ -378,8 +283,28 @@ export default function SessionHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
-  const [editNotesModalVisible, setEditNotesModalVisible] = useState(false);
   const [filter, setFilter] = useState('all'); // all, completed, no-show, cancelled
+
+  const { hideNavbar, showNavbar } = useNavbar();
+  const scrollY = useRef(0);
+  const scrollDirection = useRef(null);
+
+  const handleScroll = (event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const direction = currentScrollY > scrollY.current ? 'down' : 'up';
+    
+    if (direction !== scrollDirection.current) {
+      scrollDirection.current = direction;
+      
+      if (direction === 'down' && currentScrollY > 50) {
+        hideNavbar();
+      } else if (direction === 'up' || currentScrollY < 50) {
+        showNavbar();
+      }
+    }
+    
+    scrollY.current = currentScrollY;
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -392,20 +317,6 @@ export default function SessionHistory() {
     setDetailsModalVisible(true);
   };
 
-  const handleEditNotes = (session) => {
-    setSelectedSession(session);
-    setEditNotesModalVisible(true);
-  };
-
-  const handleSaveNotes = (sessionId, notes) => {
-    setHistory(history.map(session => 
-      session.id === sessionId 
-        ? { ...session, sessionNotes: notes }
-        : session
-    ));
-    Alert.alert('Success', 'Session notes updated successfully.');
-  };
-
   const getFilteredHistory = () => {
     if (filter === 'all') return history;
     return history.filter(session => session.status === filter);
@@ -416,7 +327,10 @@ export default function SessionHistory() {
   // Calculate statistics
   const totalSessions = history.length;
   const completedSessions = history.filter(s => s.status === 'completed').length;
-  const averageRating = history.filter(s => s.rating).reduce((sum, s, _, arr) => sum + s.rating / arr.length, 0);
+  const ratingsArray = history.filter(s => s.rating && typeof s.rating === 'number');
+  const averageRating = ratingsArray.length > 0 
+    ? ratingsArray.reduce((sum, s) => sum + s.rating, 0) / ratingsArray.length
+    : 0;
 
   return (
     <View style={styles.container}>
@@ -452,7 +366,7 @@ export default function SessionHistory() {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{averageRating.toFixed(1)}</Text>
+          <Text style={styles.statValue}>{averageRating ? averageRating.toFixed(1) : '0.0'}</Text>
           <Text style={styles.statLabel}>Avg Rating</Text>
         </View>
       </View>
@@ -488,14 +402,17 @@ export default function SessionHistory() {
       {/* History List */}
       <ScrollView 
         style={styles.historyList}
+        contentContainerStyle={{ paddingBottom: 20 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {filteredHistory.length > 0 ? (
           filteredHistory.map((session) => (
             <HistoryCard
               key={session.id}
               session={session}
-              onEditNotes={handleEditNotes}
+              onViewDetails={handleViewDetails}
             />
           ))
         ) : (
@@ -517,14 +434,6 @@ export default function SessionHistory() {
         session={selectedSession}
         onClose={() => setDetailsModalVisible(false)}
       />
-
-      {/* Edit Notes Modal */}
-      <EditNotesModal
-        visible={editNotesModalVisible}
-        session={selectedSession}
-        onClose={() => setEditNotesModalVisible(false)}
-        onSave={handleSaveNotes}
-      />
       </ScrollView>
     </View>
   );
@@ -533,7 +442,7 @@ export default function SessionHistory() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f0f4f8ff',
     position: 'relative',
   },
   gradientBackground: {
@@ -615,7 +524,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#003087',
+    color: '#061B36',
   },
   statLabel: {
     fontSize: 12,
@@ -683,7 +592,7 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#061B36',
   },
   sessionType: {
     fontSize: 14,
@@ -819,7 +728,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#061B36',
   },
   modalContent: {
     flex: 1,
@@ -841,7 +750,7 @@ const styles = StyleSheet.create({
   modalClientName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#061B36',
   },
   modalSessionType: {
     fontSize: 14,
@@ -852,7 +761,7 @@ const styles = StyleSheet.create({
   modalSectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#061B36',
     marginBottom: 10,
   },
   modalInfoGrid: {

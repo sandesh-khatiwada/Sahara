@@ -12,3 +12,5 @@ To run the project
 
 
     
+    - Every time you install node packages 
+        do -> npm install --legacy-peer-deps

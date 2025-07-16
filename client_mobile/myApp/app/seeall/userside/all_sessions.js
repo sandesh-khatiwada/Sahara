@@ -75,7 +75,7 @@ const DoctorCard = ({ doctor }) => {
       <Text style={styles.charge}>Rs {doctor.chargePerHour} /hr</Text>
       <TouchableOpacity
         style={styles.viewProfileButton}
-        onPress={() => console.log('Navigate to profile of', doctor.fullName)}
+        onPress={() => router.push('./doctordetails')}
       >
         <Text style={styles.viewProfileText}>View Profile</Text>
       </TouchableOpacity>

@@ -1,5 +1,5 @@
 import express from 'express';
-import { addAvailability, getBookingRequests, getAcceptedBookings, acceptBookingRequest } from '../controllers/counsellorController.js';
+import { addAvailability, getBookingRequests, getSessions, acceptBookingRequest, declineBookingRequest, getDailyStatistics, getCounsellorProfile, editCounsellorProfile, getCounsellorAvailability , getSessionHistory } from '../controllers/counsellorController.js';
 import { verifyTokenCounsellor } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -11,9 +11,23 @@ router.post('/availability', verifyTokenCounsellor, addAvailability);
 router.get('/bookings-requests', verifyTokenCounsellor, getBookingRequests);
 
 // GET /api/counsellors/bookings-accepted - Get accepted bookings for a counsellor
-router.get('/bookings-accepted', verifyTokenCounsellor, getAcceptedBookings);
+router.get('/sessions', verifyTokenCounsellor, getSessions);
 
 // POST /api/counsellors/accept-booking - Accept a booking request
 router.post('/accept-booking', verifyTokenCounsellor, acceptBookingRequest);
+
+// POST /api/counsellors/decline-booking - Decline a booking request
+router.post('/decline-booking', verifyTokenCounsellor, declineBookingRequest);
+
+router.get("/daily-statistics",verifyTokenCounsellor, getDailyStatistics);
+
+router.get("/profile-info",verifyTokenCounsellor, getCounsellorProfile);
+
+router.patch("/profile-info",verifyTokenCounsellor,editCounsellorProfile);
+
+router.get("/availability",verifyTokenCounsellor, getCounsellorAvailability);
+
+router.get("/session-history", verifyTokenCounsellor, getSessionHistory);
+
 
 export default router; 

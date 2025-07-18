@@ -63,6 +63,10 @@ const counsellorSchema = new mongoose.Schema({
     size: Number,
     mimetype: String
   }],
+
+  bio:{
+    type:String
+  },
   passwordChangeStatus: {
     type: Boolean,
     default: false

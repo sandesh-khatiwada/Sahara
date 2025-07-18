@@ -15,9 +15,17 @@ const sessionSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'Date and time is required']
   },
+  noteTitle: {
+    type: String,
+    required: [true, 'Counsellor note title is required']
+  },
+  noteDescription: {
+    type: String,
+    required: [true, 'Counsellor note description is required']
+  },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'rejected', 'completed'],
+    enum: ['pending', 'accepted', 'rejected', 'completed', 'no-show'],
     default: 'pending'
   },
   rejectionMessage: String,
@@ -39,8 +47,8 @@ const sessionSchema = new mongoose.Schema({
       default: false
     }
   }
-});
+}, { timestamps: true });  
 
 const Session = mongoose.model('Session', sessionSchema);
 
-export default Session; 
+export default Session;

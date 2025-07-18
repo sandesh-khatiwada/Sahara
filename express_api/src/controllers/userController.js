@@ -1,6 +1,10 @@
 import JournalEntry from '../models/JournalEntry.js';
 import Counsellor from '../models/Counsellor.js';
 import Session from '../models/Session.js';
+import moment from 'moment-timezone';
+import SleepLog from '../models/SleepLog.js';
+import User from '../models/User.js';
+
 
 // Add journal entry
 export const addJournal = async (req, res) => {
@@ -497,6 +501,21 @@ export const getCounsellorByEmail = async (req, res) => {
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email is required in query.' });
     }
+
+    // Fetch accepted sessions for the counsellor
+    const acceptedSessions = await Session.find({
+      counsellor: { $in: await Counsellor.find({ email, isActive: true }).distinct('_id') },
+      status: 'accepted'
+    }).select('dateTime').lean();
+
+    // Map sessions to their day and time
+    const bookedSlots = acceptedSessions.map(session => {
+      const date = new Date(session.dateTime);
+      const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long' });
+      const time = date.toISOString().split('T')[1].slice(0, 5); // e.g., '18:00'
+      return { dayOfWeek, time };
+    });
+
     const pipeline = [
       { $match: { email: email, isActive: true } },
       {
@@ -598,6 +617,45 @@ export const getCounsellorByEmail = async (req, res) => {
         },
       },
       {
+        $addFields: {
+          availability: {
+            $map: {
+              input: '$availability',
+              as: 'avail',
+              in: {
+                dayOfWeek: '$$avail.dayOfWeek',
+                slots: {
+                  $map: {
+                    input: '$$avail.slots',
+                    as: 'slot',
+                    in: {
+                      period: '$$slot.period',
+                      times: {
+                        $filter: {
+                          input: '$$slot.times',
+                          as: 'time',
+                          cond: {
+                            $not: {
+                              $in: [
+                                { dayOfWeek: '$$avail.dayOfWeek', time: '$$time' },
+                                bookedSlots.map(slot => ({
+                                  dayOfWeek: slot.dayOfWeek,
+                                  time: slot.time
+                                }))
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
         $project: {
           fullName: 1,
           email: 1,
@@ -614,28 +672,29 @@ export const getCounsellorByEmail = async (req, res) => {
         },
       },
     ];
+
     const result = await Counsellor.aggregate(pipeline);
     if (!result.length) {
       return res.status(404).json({ success: false, message: 'Counsellor not found.' });
     }
+
     const counsellor = result[0];
+
     // Reorder availability to start from today
     if (counsellor.availability && Array.isArray(counsellor.availability)) {
       const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const todayIdx = new Date().getDay(); // 0=Sunday, 1=Monday, ...
-      // Map JS getDay to our daysOfWeek (Monday=0, ..., Sunday=6)
-      const dayMap = [6, 0, 1, 2, 3, 4, 5];
+      const dayMap = [6, 0, 1, 2, 3, 4, 5]; // Map JS getDay to daysOfWeek (Monday=0, ..., Sunday=6)
       const startIdx = dayMap[todayIdx];
-      // Create ordered days array
       const orderedDays = [];
       for (let i = 0; i < 7; i++) {
         orderedDays.push(daysOfWeek[(startIdx + i) % 7]);
       }
-      // Sort availability by this order
       counsellor.availability = orderedDays
         .map(day => counsellor.availability.find(a => a.dayOfWeek === day))
         .filter(Boolean);
     }
+
     res.status(200).json({ success: true, data: counsellor });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching counsellor', error: error.message });
@@ -644,9 +703,9 @@ export const getCounsellorByEmail = async (req, res) => {
 
 export const bookCounsellorSession = async (req, res) => {
   try {
-    const { counsellorEmail, day, time } = req.body;
-    if (!counsellorEmail || !day || !time) {
-      return res.status(400).json({ success: false, message: 'counsellorEmail, day, and time are required.' });
+    const { counsellorEmail, day, time, noteTitle, noteDescription } = req.body;
+    if (!counsellorEmail || !day || !time || !noteTitle || !noteDescription) {
+      return res.status(400).json({ success: false, message: 'counsellorEmail, day, and time and notes for counsellor are required.' });
     }
     // Find counsellor
     const counsellor = await Counsellor.findOne({ email: counsellorEmail, isActive: true });
@@ -715,6 +774,8 @@ export const bookCounsellorSession = async (req, res) => {
       user: req.user._id,
       counsellor: counsellor._id,
       dateTime: utcDate,
+      noteTitle: noteTitle,
+      noteDescription: noteDescription,
       status: 'pending',
       paymentStatus: 'pending'
     });
@@ -730,22 +791,241 @@ export const getPendingAppointments = async (req, res) => {
     const sessions = await Session.find({
       user: req.user._id,
       status: 'pending'
-    }).sort({ dateTime: 1 });
-    res.status(200).json({ success: true, data: sessions });
+    })
+      .populate('counsellor', 'fullName email phone designation chargePerHour esewaAccountId profilePhoto')
+      .sort({ dateTime: 1 })
+      .lean();
+
+    // Transform the response to separate date and time
+    const formattedSessions = sessions.map(session => ({
+      ...session,
+      date: session.dateTime.toISOString().split('T')[0],
+      time: session.dateTime.toISOString().split('T')[1].split('.')[0],
+      counsellor: {
+        fullName: session.counsellor.fullName,
+        email: session.counsellor.email,
+        phone: session.counsellor.phone,
+        designation: session.counsellor.designation,
+        chargePerHour: session.counsellor.chargePerHour,
+        esewaAccountId: session.counsellor.esewaAccountId,
+        profilePhoto: session.counsellor.profilePhoto
+      }
+    }));
+
+    res.status(200).json({ success: true, data: formattedSessions });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching pending appointments', error: error.message });
   }
 };
 
-// Get all accepted (upcoming) booking requests for the authenticated user
-export const getUpcomingAppointments = async (req, res) => {
+
+export const getSessions = async (req, res) => {
   try {
-    const sessions = await Session.find({
-      user: req.user._id,
-      status: 'accepted'
-    }).sort({ dateTime: 1 });
-    res.status(200).json({ success: true, data: sessions });
+    const userId = req.user._id;
+
+    // Fetch upcoming sessions
+    const upcomingSessions = await Session.find({
+      user: userId,
+      status: 'accepted',
+    })
+      .populate('counsellor', 'fullName email phone designation chargePerHour esewaAccountId profilePhoto')
+      .sort({ dateTime: 1 }) // Earliest upcoming first (today before tomorrow)
+      .lean();
+
+    // Fetch past sessions
+    const pastSessions = await Session.find({
+      user: userId,
+      status: 'completed',
+    })
+      .populate('counsellor', 'fullName email phone designation chargePerHour esewaAccountId profilePhoto')
+      .sort({ dateTime: -1 }) // Latest completed first
+      .lean();
+
+    // Format both sets of sessions
+    const formatSessions = (sessions) =>
+      sessions.map((session) => ({
+        ...session,
+        date: session.dateTime.toISOString().split('T')[0],
+        time: session.dateTime.toISOString().split('T')[1].split('.')[0],
+        counsellor: {
+          fullName: session.counsellor.fullName,
+          email: session.counsellor.email,
+          phone: session.counsellor.phone,
+          designation: session.counsellor.designation,
+          chargePerHour: session.counsellor.chargePerHour,
+          esewaAccountId: session.counsellor.esewaAccountId,
+          profilePhoto: session.counsellor.profilePhoto,
+        },
+      }));
+
+    res.status(200).json({
+      success: true,
+      upcomingAppointments: formatSessions(upcomingSessions),
+      pastAppointments: formatSessions(pastSessions),
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error fetching upcoming appointments', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching sessions',
+      error: error.message,
+    });
   }
-}; 
+};
+
+
+export const addFeedbackAndRating = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { sessionId, feedback, rating } = req.body;
+
+    // Validate rating
+    if (rating < 0 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 0 and 5',
+      });
+    }
+
+    // Find the session with provided sessionId that belongs to the user and is completed
+    const session = await Session.findOne({
+      _id: sessionId,
+      user: userId,
+      status: 'completed',
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'No completed session found for this user with the provided session ID',
+      });
+    }
+
+    // Check if feedback and rating already exist
+    if (session.feedback || session.rating) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already provided feedback to the counsellor',
+      });
+    }
+
+    // Update feedback and rating
+    session.feedback = feedback;
+    session.rating = rating;
+    await session.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Feedback and rating submitted successfully',
+      data: {
+        sessionId: session._id,
+        feedback: session.feedback,
+        rating: session.rating,
+      },
+    });
+  } catch (error) {
+    console.error('Error in addFeedbackAndRating:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error adding feedback and rating',
+      error: error.message,
+    });
+  }
+};
+
+
+export const addSleepLog = async (req, res) => {
+    try {
+        const { hoursSlept, quality } = req.body;
+        const userId = req.user._id;
+
+        // Validate quality field manually
+        const allowedQualities = ['Poor', 'Fair', 'Good'];
+        if (!allowedQualities.includes(quality)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Quality must be one of: Poor, Fair, or Good.'
+            });
+        }
+
+        const timezone = 'Asia/Kathmandu';
+        const startOfDay = moment().tz(timezone).startOf('day').toDate();
+        const endOfDay = moment().tz(timezone).endOf('day').toDate();
+
+        const existingLog = await SleepLog.findOne({
+            user: userId,
+            timestamp: { $gte: startOfDay, $lte: endOfDay }
+        });
+
+        if (existingLog) {
+            return res.status(400).json({
+                success: false,
+                message: 'You have already added a sleep log for today.'
+            });
+        }
+
+        const newLog = await SleepLog.create({
+            user: userId,
+            hoursSlept,
+            quality
+        });
+
+        // Update user's sleepLogs list
+        await User.findByIdAndUpdate(userId, {
+            $push: { sleepLogs: newLog._id }
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Sleep log added successfully.',
+            data: newLog
+        });
+    } catch (error) {
+        console.error('Error in addSleepLog:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to add sleep log.',
+            error: error.message
+        });
+    }
+};
+
+
+export const getSleepLogHistory = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { filter } = req.body;
+
+        let limit = 7; // default is weekly
+        if (filter === 'monthly') {
+            limit = 30;
+        }
+
+        const sleepLogs = await SleepLog.find({ user: userId })
+            .sort({ timestamp: -1 }) // Latest first
+            .limit(limit)
+            .lean();
+
+        const timezone = 'Asia/Kathmandu';
+        const formattedLogs = sleepLogs.map(log => {
+            const dateInNepal = moment(log.timestamp).tz(timezone);
+            return {
+                date: dateInNepal.format('MM/DD/YYYY'),
+                day: dateInNepal.format('dddd'),
+                hoursSlept: log.hoursSlept,
+                quality: log.quality
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            data: formattedLogs
+        });
+    } catch (error) {
+        console.error('Error in getSleepLogHistory:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch sleep log history.',
+            error: error.message
+        });
+    }
+};

@@ -1,6 +1,6 @@
 import express from 'express';
 import { signup, verifyOTP, resendOTP, login } from '../controllers/authController.js';
-import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getUpcomingAppointments } from '../controllers/userController.js';
+import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getSessions, addFeedbackAndRating, addSleepLog, getSleepLogHistory } from '../controllers/userController.js';
 import { verifyTokenUser } from '../middleware/authMiddleware.js';
 import { requestPasswordReset, verifyOTPAndResetPassword } from '../controllers/authController.js';
 
@@ -49,7 +49,14 @@ router.post('/counsellor-booking', verifyTokenUser, bookCounsellorSession);
 // GET /api/users/pending-appointments - Get pending appointments (protected route)
 router.get('/pending-appointments', verifyTokenUser, getPendingAppointments);
 
-// GET /api/users/upcoming-appointments - Get upcoming appointments (protected route)
-router.get('/upcoming-appointments', verifyTokenUser, getUpcomingAppointments);
+// GET /api/users/sessions - Get upcoming and past (protected route)
+router.get('/sessions', verifyTokenUser, getSessions);
+
+
+router.post("/session-feedback",verifyTokenUser, addFeedbackAndRating);
+
+router.post("/sleep-log",verifyTokenUser, addSleepLog);
+
+router.get("/sleep-logs-history",verifyTokenUser, getSleepLogHistory);
 
 export default router; 

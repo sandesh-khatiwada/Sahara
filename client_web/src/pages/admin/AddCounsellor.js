@@ -182,7 +182,7 @@ const AddCounsellor = () => {
       });
 
       const response = await axios.post(
-        'http://localhost:5001/api/admin/counsellors',
+        'http://localhost:5000/api/admin/counsellors',
         formDataToSend,
         {
           headers: {

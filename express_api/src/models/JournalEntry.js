@@ -42,6 +42,9 @@ const journalEntrySchema = new mongoose.Schema({
     },
     required: false // Set to false if emotionalTone is optional
   },
+
+  predictedEmotion:String,
+  
   confidenceScore: Number,
   timestamp: {
     type: Date,

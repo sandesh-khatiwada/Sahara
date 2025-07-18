@@ -47,7 +47,7 @@ const Counsellors = () => {
   const fetchCounsellors = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5001/api/admin/counsellors?page=${page}`, {
+      const response = await axios.get(`http://localhost:5000/api/admin/counsellors?page=${page}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -216,7 +216,7 @@ const Counsellors = () => {
                       <CardMedia
                         component="img"
                         height="200"
-                        image={`http://localhost:5001/uploads/profile_photos/${counsellor.profilePhoto.filename}`}
+                        image={`http://localhost:5000/uploads/profile_photos/${counsellor.profilePhoto.filename}`}
                         alt={counsellor.fullName}
                         onError={() => handleImageError(counsellor._id)}
                         sx={{ 

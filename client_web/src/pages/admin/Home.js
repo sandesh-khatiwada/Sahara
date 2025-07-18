@@ -296,12 +296,12 @@ const Home = () => {
       setError('');
 
       const [usersResponse, counsellorsResponse] = await Promise.all([
-        axios.get('http://localhost:5001/api/admin/total-users', {
+        axios.get('http://localhost:5000/api/admin/total-users', {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('adminToken')}`
           }
         }),
-        axios.get('http://localhost:5001/api/admin/total-counsellors', {
+        axios.get('http://localhost:5000/api/admin/total-counsellors', {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('adminToken')}`
           }

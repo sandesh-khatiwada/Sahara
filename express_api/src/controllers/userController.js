@@ -4,6 +4,7 @@ import Session from '../models/Session.js';
 import moment from 'moment-timezone';
 import SleepLog from '../models/SleepLog.js';
 import User from '../models/User.js';
+import Chat from '../models/Chat.js';
 
 
 // Add journal entry
@@ -76,9 +77,20 @@ export const addJournal = async (req, res) => {
     }
     
     const aiResponse = await response.json();
-    const emotionalTone = aiResponse;
 
     console.log("AI Response:", aiResponse);
+
+    const emotionalTone = {
+  max_confidence: aiResponse.max_confidence,
+  predictions: Object.entries(aiResponse.probabilities).map(([emotion, percentage]) => ({
+    emotion,
+    confidence: parseFloat(percentage.replace('%', '')) / 100  // Convert "92.83%" => 0.9283
+  })),
+  text: content
+};
+
+  const predictedEmotion = aiResponse.predicted_emotion;
+
 
     // Create journal entry
     const journalEntry = await JournalEntry.create({
@@ -86,6 +98,7 @@ export const addJournal = async (req, res) => {
       title,
       explicitEmotion,
       emotionalTone,
+      predictedEmotion,
       confidenceScore: aiResponse.max_confidence, // Assuming max_confidence is part
       content,
       shareStatus: shareStatus === true
@@ -1028,4 +1041,91 @@ export const getSleepLogHistory = async (req, res) => {
             error: error.message
         });
     }
+};
+
+
+export const providePrompt = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { prompt } = req.body;
+
+        if (!prompt) {
+            return res.status(400).json({
+                success: false,
+                message: 'Prompt is required.'
+            });
+        }
+
+        // Call Flask API for AI Response
+        const response = await fetch('http://localhost:8000/api/bot/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt }),
+        });
+
+        if (!response.ok) {
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch response from AI chatbot API.'
+            });
+        }
+
+        const flaskResponse = await response.json();
+        const aiResponse = flaskResponse.response;
+
+        // Save to Chat model
+        const chatEntry = await Chat.create({
+            user: userId,
+            prompt,
+            aiResponse
+        });
+
+        // Respond with the created Chat document
+        res.status(201).json({
+            success: true,
+            data: chatEntry
+        });
+
+    } catch (error) {
+        console.error('Error in providePrompt:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to provide prompt.',
+            error: error.message
+        });
+    }
+};
+
+
+export const getChatHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Fetch chats sorted by oldest first
+    const chats = await Chat.find({ user: userId }).sort({ timestamp: 1 });
+
+    // Convert timestamp to Nepal Time and overwrite timestamp field
+    const chatsWithNepalTime = chats.map(chat => {
+      const chatObj = chat.toObject();
+      chatObj.timestamp = moment(chat.timestamp)
+        .tz('Asia/Kathmandu')
+        .format('YYYY-MM-DD HH:mm:ss');
+      return chatObj;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: chatsWithNepalTime
+    });
+
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch chat history',
+      error: error.message
+    });
+  }
 };

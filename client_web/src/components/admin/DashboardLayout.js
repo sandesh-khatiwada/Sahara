@@ -54,13 +54,13 @@ const DashboardLayout = ({ children }) => {
 
   const fetchProfile = async () => {
     try {
-      const response = await axios.get('http://localhost:5001/api/admin/profile', {
+      const response = await axios.get('http://localhost:5000/api/admin/profile', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
       });
       if (response.data.data.admin.profilePhoto) {
-        setProfilePhoto(`http://localhost:5001/${response.data.data.admin.profilePhoto.path}`);
+        setProfilePhoto(`http://localhost:5000/${response.data.data.admin.profilePhoto.path}`);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);

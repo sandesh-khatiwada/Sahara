@@ -1,6 +1,6 @@
 import express from 'express';
 import { signup, verifyOTP, resendOTP, login } from '../controllers/authController.js';
-import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getSessions, addFeedbackAndRating, addSleepLog, getSleepLogHistory } from '../controllers/userController.js';
+import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getSessions, addFeedbackAndRating, addSleepLog, getSleepLogHistory, providePrompt, getChatHistory } from '../controllers/userController.js';
 import { verifyTokenUser } from '../middleware/authMiddleware.js';
 import { requestPasswordReset, verifyOTPAndResetPassword } from '../controllers/authController.js';
 
@@ -58,5 +58,9 @@ router.post("/session-feedback",verifyTokenUser, addFeedbackAndRating);
 router.post("/sleep-log",verifyTokenUser, addSleepLog);
 
 router.get("/sleep-logs-history",verifyTokenUser, getSleepLogHistory);
+
+router.post("/chat",verifyTokenUser, providePrompt);
+
+router.get("/chat-history",verifyTokenUser,getChatHistory);
 
 export default router; 

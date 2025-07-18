@@ -60,7 +60,7 @@ const CounsellorProfile = () => {
   const fetchCounsellorDetails = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5001/api/admin/counsellors/${id}`, {
+      const response = await axios.get(`http://localhost:5000/api/admin/counsellors/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -82,7 +82,7 @@ const CounsellorProfile = () => {
     if (!counsellor?.profilePhoto?.filename || imageError) {
       return null;
     }
-    return `http://localhost:5001/uploads/profile_photos/${counsellor.profilePhoto.filename}`;
+    return `http://localhost:5000/uploads/profile_photos/${counsellor.profilePhoto.filename}`;
   };
 
   const formatDate = (dateString) => {

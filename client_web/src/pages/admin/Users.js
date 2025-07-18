@@ -36,7 +36,7 @@ const Users = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5001/api/admin/users?page=${page}`, {
+      const response = await axios.get(`http://localhost:5000/api/admin/users?page=${page}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }

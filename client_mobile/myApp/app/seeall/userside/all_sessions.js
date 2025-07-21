@@ -10,99 +10,88 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import doctor1 from '../../../assets/image/doctor1.png';
+import sessionIcon from '../../../assets/image/doctor1.png'; // Placeholder icon, replace with actual asset
 
-const API_BASE_URL = 'http://your-api-url.com'; // Replace with actual API URL
-
-const dummyDoctors = [
+const dummySessions = [
   {
-    fullName: 'Bikram Kharal',
-    email: 'bikramkharal997@gmail.com',
-    designation: 'Clinical Psychologist',
-    chargePerHour: 1000,
-    profilePhoto: null,
+    id: 'individual',
+    name: 'Individual Counseling',
+    specialty: 'Clinical Psychology',
+    chargePerHour: 800,
+    icon: sessionIcon,
+    doctorName: 'Bikram Kharal',
   },
   {
-    fullName: 'Binod Yadav',
-    email: 'binod@gmail.com',
-    designation: 'Clinical Psychologist',
-    chargePerHour: 1000,
-    profilePhoto: null,
+    id: 'indiddvidual',
+    name: 'Individuaddl Counseling',
+    specialty: 'Counseling Psychology',
+    chargePerHour: 500,
+    icon: sessionIcon,
+    doctorName: 'Binod Yadav',
   },
   {
-    fullName: 'Aayusha Regmi',
-    email: 'aayusharegmi2@gmail.com',
-    designation: 'Counsellor Psychiatrist',
-    chargePerHour: 30,
-    profilePhoto: null,
+    id: 'group',
+    name: 'Group Therapy',
+    specialty: 'Group Therapy',
+    chargePerHour: 400,
+    icon: sessionIcon,
+    doctorName: 'Aayusha Regmi',
   },
   {
-    fullName: 'Bibek Pokhrel',
-    email: 'themarikib0x0@gmail.com',
-    designation: 'Clinical Psychologist',
-    chargePerHour: 1500,
-    profilePhoto: null,
+    id: 'grodup',
+    name: 'Therapy',
+    specialty: 'Behavioral Therapy',
+    chargePerHour: 800,
+    icon: sessionIcon,
+    doctorName: 'Bibek Pokhrel',
   },
   {
-    fullName: 'Niranjan Pandey',
-    email: 'niranjanpandey@gmail.com',
-    designation: 'Doctor',
-    chargePerHour: 50,
-    profilePhoto: null,
-  },
-  {
-    fullName: 'Anisha KC',
-    email: 'anisha@gmail.com',
-    designation: 'Psychologist',
-    chargePerHour: 499,
-    profilePhoto: null,
+    id: 'online',
+    name: 'Online Session',
+    specialty: 'Telepsychiatry',
+    chargePerHour: 600,
+    icon: sessionIcon,
+    doctorName: 'Niranjan Pandey',
   },
 ];
 
-const DoctorCard = ({ doctor }) => {
-  const imageSource = doctor?.profilePhoto?.filename
-    ? {
-        uri: `${API_BASE_URL}/uploads/profile_photos/${doctor.profilePhoto.filename}`,
-      }
-    : doctor1;
-
-  return (
-    <View style={styles.doctorCard}>
-      <Image source={imageSource} style={styles.doctorImage} />
-      <Text style={styles.doctorName}>{doctor.fullName}</Text>
-      <Text style={styles.designation}>{doctor.designation}</Text>
-      <Text style={styles.email}>{doctor.email}</Text>
-      <Text style={styles.charge}>Rs {doctor.chargePerHour} /hr</Text>
+const SessionCard = ({ session }) => (
+  <View style={styles.sessionCard}>
+    <Image source={session.icon} style={styles.sessionImage} />
+    <View style={styles.sessionInfo}>
+      <Text style={styles.sessionName}>{session.doctorName}</Text>
+      <Text style={styles.sessionDescription}>{session.specialty}</Text>
+      <Text style={styles.charge}>Rs {session.chargePerHour} /hr</Text>
       <TouchableOpacity
-        style={styles.viewProfileButton}
-        onPress={() => router.push('./doctordetails')}
+        style={styles.viewDetailsButton}
+        onPress={() => router.push({ pathname: './doctordetails', params: { doctorName: session.doctorName } })}
       >
-        <Text style={styles.viewProfileText}>View Profile</Text>
+        <Text style={styles.viewDetailsText}>Book Appointment</Text>
       </TouchableOpacity>
     </View>
-  );
-};
+  </View>
+);
 
-export default function AllSessions() {
-  const [doctors, setDoctors] = useState([]);
-  const [filteredDoctors, setFilteredDoctors] = useState([]);
+export default function SelectSessionType() {
+  const [sessions, setSessions] = useState([]);
+  const [filteredSessions, setFilteredSessions] = useState([]);
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
-    setDoctors(dummyDoctors);
-    setFilteredDoctors(dummyDoctors);
+    setSessions(dummySessions);
+    setFilteredSessions(dummySessions);
   }, []);
 
   const handleSearch = (text) => {
     setSearchText(text);
     const lowerText = text.toLowerCase();
-
-    const filtered = doctors.filter((doc) =>
-      doc.fullName.toLowerCase().includes(lowerText) ||
-      doc.designation.toLowerCase().includes(lowerText) ||
-      doc.chargePerHour.toString().includes(lowerText)
+    const filtered = dummySessions.filter((session) =>
+      session.name.toLowerCase().includes(lowerText) ||
+      session.specialty.toLowerCase().includes(lowerText) ||
+      session.chargePerHour.toString().includes(lowerText) ||
+      session.doctorName.toLowerCase().includes(lowerText)
     );
-    setFilteredDoctors(filtered);
+    setFilteredSessions(filtered);
   };
 
   return (
@@ -112,12 +101,12 @@ export default function AllSessions() {
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#003087" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>All Counselors</Text>
+        <Text style={styles.headerTitle}>Select a Doctor</Text>
       </View>
 
       {/* Search Field */}
       <TextInput
-        placeholder="Search by name, specialization, or price"
+        placeholder="Search by session type, specialty, price, or doctor"
         placeholderTextColor="#aaa"
         value={searchText}
         onChangeText={handleSearch}
@@ -126,9 +115,9 @@ export default function AllSessions() {
 
       {/* List */}
       <FlatList
-        data={filteredDoctors}
-        keyExtractor={(item) => item.email}
-        renderItem={({ item }) => <DoctorCard doctor={item} />}
+        data={filteredSessions}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <SessionCard session={item} />}
         contentContainerStyle={{ paddingBottom: 20 }}
       />
     </View>
@@ -153,7 +142,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#003087',
-    marginLeft: 10,
+    marginLeft: 90,
   },
   searchInput: {
     backgroundColor: '#fff',
@@ -166,11 +155,12 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     color: '#333',
   },
-  doctorCard: {
+  sessionCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
     margin: 10,
+    flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -178,48 +168,44 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  doctorImage: {
+  sessionImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 10,
+    marginRight: 15,
   },
-  doctorName: {
+  sessionInfo: {
+    flex: 1,
+  },
+  sessionName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#003087',
-    textAlign: 'center',
     marginBottom: 5,
   },
-  designation: {
+  sessionDescription: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
-    textAlign: 'center',
     marginBottom: 4,
-  },
-  email: {
-    fontSize: 13,
-    color: '#888',
-    textAlign: 'center',
-    marginBottom: 5,
   },
   charge: {
     fontSize: 15,
     color: '#333',
     fontWeight: 'bold',
-    textAlign: 'center',
     marginBottom: 10,
   },
-  viewProfileButton: {
+  viewDetailsButton: {
     backgroundColor: '#003087',
     paddingVertical: 6,
     paddingHorizontal: 20,
     borderRadius: 25,
   },
-  viewProfileText: {
+  viewDetailsText: {
+    
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    textAlign:'center',
   },
 });

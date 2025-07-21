@@ -69,9 +69,9 @@ export default function MainLayout() {
         }}
       />
       <Tabs.Screen
-        name="statistics"
+        name="profile"
         options={{
-          title: 'Statistics',
+          title: 'profile',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="emoticon-outline" color={color} size={size} />
           ),

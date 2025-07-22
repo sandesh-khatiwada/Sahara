@@ -29,8 +29,6 @@ export const addAvailability = async (req, res) => {
   }
 };
 
-
-//Get booking request for authenticated counsellor
 export const getBookingRequests = async (req, res) => {
   try {
     const sessions = await Session.find({
@@ -43,16 +41,23 @@ export const getBookingRequests = async (req, res) => {
 
     const timezone = 'Asia/Kathmandu';
 
-    // Transform the response to separate date and time, and format createdAt, updatedAt
-    const formattedSessions = sessions.map(session => ({
-      ...session,
-      createdAt: moment(session.createdAt).tz(timezone).format('YYYY-MM-DD HH:mm:ss'),
-      updatedAt: moment(session.updatedAt).tz(timezone).format('YYYY-MM-DD HH:mm:ss'),
-      user: {
-        fullName: session.user.fullName,
-        email: session.user.email
-      }
-    }));
+    const formattedSessions = sessions.map(session => {
+      // Convert dateTime to the timezone and format to ISO string first
+      const dateTimeInTZ = moment(session.dateTime).tz(timezone).toISOString();
+
+      return {
+        ...session,
+        createdAt: moment(session.createdAt).tz(timezone).format('YYYY-MM-DD HH:mm:ss'),
+        updatedAt: moment(session.updatedAt).tz(timezone).format('YYYY-MM-DD HH:mm:ss'),
+        dateTime: session.dateTime,
+        date: dateTimeInTZ.split('T')[0], // 'YYYY-MM-DD'
+        time: dateTimeInTZ.split('T')[1].split('.')[0], // 'HH:mm:ss'
+        user: {
+          fullName: session.user.fullName,
+          email: session.user.email
+        }
+      };
+    });
 
     res.status(200).json({ success: true, data: formattedSessions });
   } catch (error) {
@@ -267,53 +272,72 @@ export const declineBookingRequest = async (req, res) => {
 };
 
 
-
-export const getDailyStatistics = async (req, res) => {
+export const getTotalStatistics = async (req, res) => {
   try {
-    const timezone = 'Asia/Kathmandu';
-    const today = moment().tz(timezone);
+    // Get counsellor ID
+    const counsellorId = req.counsellor._id;
+    console.log('Counsellor ID:', counsellorId);
 
-    const startOfDayNepal = today.clone().startOf('day');
-    const endOfDayNepal = today.clone().endOf('day');
-
-    const startOfDayUTC = startOfDayNepal.clone().utc().toDate();
-    const endOfDayUTC = endOfDayNepal.clone().utc().toDate();
-
-    console.log('Querying sessions between:', startOfDayUTC.toISOString(), 'and', endOfDayUTC.toISOString());
-    console.log('Counsellor ID:', req.counsellor._id);
-
-    const sessions = await Session.find({
-      counsellor: req.counsellor._id,
-      dateTime: {
-        $gte: startOfDayUTC,
-        $lte: endOfDayUTC
-      },
-      status: { $in: ['accepted', 'pending'] }
+    // Count completed sessions
+    const completedSessions = await Session.countDocuments({
+      counsellor: counsellorId,
+      status: 'completed',
     });
 
-    console.log('Sessions matched:', sessions);
+    // Count pending session requests
+    const pendingSessions = await Session.countDocuments({
+      counsellor: counsellorId,
+      status: 'pending',
+    });
 
-    const acceptedCount = sessions.filter(session => session.status === 'accepted').length;
-    const pendingCount = sessions.filter(session => session.status === 'pending').length;
+    // Count unique users for completed or accepted sessions
+    const uniqueUsers = await Session.aggregate([
+      {
+        $match: {
+          counsellor: new mongoose.Types.ObjectId(counsellorId),
+          status: { $in: ['completed', 'accepted'] },
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+        },
+      },
+      {
+        $count: 'totalClients',
+      },
+    ]);
 
+    // Extract totalClients from aggregation result (handle case where no users exist)
+    const totalClients = uniqueUsers.length > 0 ? uniqueUsers[0].totalClients : 0;
+
+    // Log results for debugging
+    console.log('Completed Sessions Count:', completedSessions);
+    console.log('Pending Sessions Count:', pendingSessions);
+    console.log('Unique Users Count:', totalClients);
+
+    // Hardcoded totalRevenue
+    const totalRevenue = 5000;
+
+    // Return response
     res.status(200).json({
       success: true,
       data: {
-        numberOfSessions: acceptedCount,
-        newRequests: pendingCount,
-        date: today.format('YYYY-MM-DD')
-      }
+        completedSessions,
+        pendingSessions,
+        totalRevenue,
+        totalClients,
+      },
     });
   } catch (error) {
-    console.error('Error in getDailyStatistics:', error);
+    console.error('Error in getTotalStatistics:', error.message);
     res.status(500).json({
       success: false,
-      message: 'Error fetching daily statistics',
-      error: error.message
+      message: 'Error fetching total statistics',
+      error: error.message,
     });
   }
 };
-
 
 export const getCounsellorProfile = async (req, res) => {
   try {
@@ -437,34 +461,37 @@ export const getCounsellorAvailability = async (req, res) => {
 };
 
 
-//Get session history of authenticated counsellor
+// Get session history of authenticated counsellor
 export const getSessionHistory = async (req, res) => {
   try {
     // Fetch sessions for the counsellor with status "completed" and "no-show"
-
     const sessions = await Session.find({
       counsellor: req.counsellor._id,
-      status: { $in: ['completed', 'no-show'] } 
+      status: { $in: ['completed', 'no-show'] }
     })
       .populate('user', 'fullName') // Populate user field with fullName
       .select('_id user counsellor dateTime noteTitle noteDescription status rejectionMessage paymentStatus rating feedback complaint');
 
-    // Format the response
-    const sessionHistory = sessions.map(session => ({
-      _id: session._id,
-      user: {
-        fullName: session.user ? session.user.fullName : 'Unknown' // Fallback if user is missing
-      },
-      dateTime: session.dateTime,
-      noteTitle: session.noteTitle,
-      noteDescription: session.noteDescription,
-      status: session.status,
-      rejectionMessage: session.rejectionMessage || null,
-      paymentStatus: session.paymentStatus,
-      rating: session.rating || null,
-      feedback: session.feedback || null,
-      complaint: session.complaint || { message: null, submitted: false }
-    }));
+    // Format the response with separate date and time
+    const sessionHistory = sessions.map(session => {
+      const isoDateTime = session.dateTime.toISOString();
+      return {
+        _id: session._id,
+        user: {
+          fullName: session.user ? session.user.fullName : 'Unknown'
+        },
+        date: isoDateTime.split('T')[0],         // yyyy-mm-dd
+        time: isoDateTime.split('T')[1].split('.')[0], // hh:mm:ss
+        noteTitle: session.noteTitle,
+        noteDescription: session.noteDescription,
+        status: session.status,
+        rejectionMessage: session.rejectionMessage || null,
+        paymentStatus: session.paymentStatus,
+        rating: session.rating || null,
+        feedback: session.feedback || null,
+        complaint: session.complaint || { message: null, submitted: false }
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -474,4 +501,3 @@ export const getSessionHistory = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching session history', error: error.message });
   }
 };
-

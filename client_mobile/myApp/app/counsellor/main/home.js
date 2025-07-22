@@ -17,63 +17,44 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavbar } from './_layout';
+import { API_BASE_URL } from '@env';
 
 const { width } = Dimensions.get('window');
-const API_BASE_URL = 'http://192.168.1.67:5001';
 
 // Default fallback image
 const DEFAULT_PROFILE_IMAGE = 'https://randomuser.me/api/portraits/women/8.jpg';
 
-// Sample data
-const upcomingSessions = [
-  {
-    id: '1',
-    clientName: 'Aayusha Karki',
-    type: 'Anxiety Counseling',
-    date: 'Today',
-    time: '10:00 AM',
-  },
-  {
-    id: '2',
-    clientName: 'John Doe',
-    type: 'Depression Support',
-    date: 'Today',
-    time: '2:00 PM',
-  },
-];
+// Utility to format date (e.g., "2025-07-22" to "Today" or "Jul 22, 2025")
+const formatDate = (dateStr) => {
+  const today = new Date();
+  const date = new Date(dateStr);
+  const isToday =
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
+  if (isToday) return 'Today';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
 
-const pendingRequests = [
-  {
-    id: '1',
-    clientName: 'Sarah Miller',
-    issue: 'Stress Management',
-    requestedTime: '3:00 PM Today',
-  },
-  {
-    id: '2',
-    clientName: 'Mike Johnson',
-    issue: 'Relationship Issues',
-    requestedTime: '4:00 PM Tomorrow',
-  },
-];
+// Utility to format time (e.g., "15:00:00" to "3:00 PM")
+const formatTime = (timeStr) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const adjustedHours = hours % 12 || 12;
+  return `${adjustedHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
 
-const CounsellorHeader = ({ counsellorData, onLogout }) => {
+const CounsellorHeader = ({ profileInfo, onLogout }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  
+
   const getProfileImageUri = () => {
     if (imageError) return DEFAULT_PROFILE_IMAGE;
-    
-    if (counsellorData?.profilePhoto) {
-      if (typeof counsellorData.profilePhoto === 'string') {
-        return counsellorData.profilePhoto;
-      }
-      if (typeof counsellorData.profilePhoto === 'object' && counsellorData.profilePhoto.path) {
-        // Backend returns profilePhoto as an object with path property
-        return counsellorData.profilePhoto.path.startsWith('http') 
-          ? counsellorData.profilePhoto.path 
-          : `${API_BASE_URL}${counsellorData.profilePhoto.path}`;
-      }
+
+    if (profileInfo?.profilePhoto?.path) {
+      return `${API_BASE_URL}/uploads/profile_photos/${profileInfo.profilePhoto.filename}`
+
+       
     }
     return DEFAULT_PROFILE_IMAGE;
   };
@@ -83,18 +64,18 @@ const CounsellorHeader = ({ counsellorData, onLogout }) => {
       <StatusBar backgroundColor="transparent" barStyle="dark-content" />
       <View style={styles.headerTop}>
         <View style={styles.logoContainer}>
-          <Image 
-            source={require('../../../assets/image/SaharaAppIcon.png')} 
+          <Image
+            source={require('../../../assets/image/SaharaAppIcon.png')}
             style={styles.logo}
             resizeMode="contain"
           />
           <View style={styles.brandContainer}>
             <Text style={styles.brandText}>Sahara</Text>
-            <Text style={styles.brandSubtext}>Mental Health</Text>
+            <Text style={styles.brandSubtext}>Mental Health Support</Text>
           </View>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.profileButton}
             onPress={() => router.push('/counsellor/main/profile')}
           >
@@ -127,7 +108,7 @@ const CounsellorHeader = ({ counsellorData, onLogout }) => {
             <MaterialCommunityIcons name="hand-wave" size={24} color="#FF9800" />
           </View>
           <View style={styles.greetingText}>
-            <Text style={styles.greeting}>Welcome Dr. {counsellorData?.fullName || 'Counsellor'}</Text>
+            <Text style={styles.greeting}>Welcome Dr. {profileInfo?.fullName || 'Counsellor'}</Text>
             <Text style={styles.message}>
               "Thank you for making a difference in people's lives. Your dedication helps heal hearts and minds. 💙"
             </Text>
@@ -162,14 +143,10 @@ const SessionCard = ({ session }) => (
         </View>
         <View style={styles.sessionDetails}>
           <Text style={styles.sessionClient}>{session.clientName}</Text>
-          <Text style={styles.sessionType}>{session.type}</Text>
+          <Text style={styles.sessionType}>{session.type || 'General Counseling'}</Text>
           <Text style={styles.sessionTime}>{session.date} • {session.time}</Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.joinButton}>
-        <MaterialCommunityIcons name="video" size={20} color="#fff" />
-        <Text style={styles.joinButtonText}>Join</Text>
-      </TouchableOpacity>
     </View>
   </View>
 );
@@ -183,17 +160,9 @@ const RequestCard = ({ request }) => (
         </View>
         <View style={styles.requestDetails}>
           <Text style={styles.requestClient}>{request.clientName}</Text>
-          <Text style={styles.requestIssue}>{request.issue}</Text>
+          <Text style={styles.requestIssue}>{request.issue || 'General Counseling'}</Text>
           <Text style={styles.requestTime}>{request.requestedTime}</Text>
         </View>
-      </View>
-      <View style={styles.requestActions}>
-        <TouchableOpacity style={styles.acceptButton}>
-          <MaterialCommunityIcons name="check" size={18} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.rejectButton}>
-          <MaterialCommunityIcons name="close" size={18} color="#fff" />
-        </TouchableOpacity>
       </View>
     </View>
   </View>
@@ -201,12 +170,16 @@ const RequestCard = ({ request }) => (
 
 export default function CounsellorHome() {
   const [counsellorData, setCounsellorData] = useState(null);
+  const [profileInfo, setProfileInfo] = useState(null);
   const [loadingCounsellor, setLoadingCounsellor] = useState(true);
-  const [todayStats, setTodayStats] = useState({
-    sessions: 5,
-    newRequests: 3,
-    totalClients: 24
-  });
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [todayStats, setTodayStats] = useState({ sessions: 0, newRequests: 0 });
+  const [upcomingSessions, setUpcomingSessions] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [error, setError] = useState(null);
 
   const { hideNavbar, showNavbar } = useNavbar();
   const scrollY = useRef(0);
@@ -215,18 +188,142 @@ export default function CounsellorHome() {
   const handleScroll = (event) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
     const direction = currentScrollY > scrollY.current ? 'down' : 'up';
-    
+
     if (direction !== scrollDirection.current) {
       scrollDirection.current = direction;
-      
+
       if (direction === 'down' && currentScrollY > 50) {
         hideNavbar();
       } else if (direction === 'up' || currentScrollY < 50) {
         showNavbar();
       }
     }
-    
+
     scrollY.current = currentScrollY;
+  };
+
+  const fetchProfileInfo = async (token) => {
+    try {
+      setLoadingProfile(true);
+      const res = await fetch(`${API_BASE_URL}/api/counsellors/profile-info`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setProfileInfo(json.data);
+      } else {
+        throw new Error(json.message || 'Failed to load profile information');
+      }
+    } catch (err) {
+      console.error('Fetch profile info error:', err.message);
+      setError(`Failed to load profile information: ${err.message}`);
+      if (err.message.includes('Unauthorized') || err.message.includes('Invalid token')) {
+        Alert.alert(
+          'Authentication Error',
+          'Your session is invalid. Please login again.',
+          [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        );
+      }
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const fetchDailyStats = async (token) => {
+    try {
+      setLoadingStats(true);
+      const res = await fetch(`${API_BASE_URL}/api/counsellors/daily-statistics`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setTodayStats({
+          sessions: json.data.numberOfSessions || 0,
+          newRequests: json.data.newRequests || 0,
+        });
+      } else {
+        throw new Error(json.message || 'Failed to load daily statistics');
+      }
+    } catch (err) {
+      console.error('Fetch daily stats error:', err.message);
+      setError(`Failed to load daily statistics: ${err.message}`);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const fetchUpcomingSessions = async (token) => {
+    try {
+      setLoadingSessions(true);
+      const res = await fetch(`${API_BASE_URL}/api/counsellors/sessions`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const formattedSessions = json.data
+          .filter((session) => session.status === 'accepted')
+          .slice(0, 2)
+          .map((session) => ({
+            id: session._id,
+            clientName: session.user.fullName,
+            type: session.noteTitle || 'General Counseling',
+            date: formatDate(session.date),
+            time: formatTime(session.time),
+          }));
+        setUpcomingSessions(formattedSessions);
+      } else {
+        throw new Error(json.message || 'Failed to load sessions');
+      }
+    } catch (err) {
+      console.error('Fetch sessions error:', err.message);
+      setError(`Failed to load sessions: ${err.message}`);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const fetchPendingRequests = async (token) => {
+    try {
+      setLoadingRequests(true);
+      const res = await fetch(`${API_BASE_URL}/api/counsellors/bookings-requests`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const formattedRequests = json.data
+          .filter((request) => request.status === 'pending')
+          .map((request) => ({
+            id: request._id,
+            clientName: request.user.fullName,
+            issue: request.noteTitle || 'General Counseling',
+            requestedTime: `${formatDate(request.date)} • ${formatTime(request.time)}`,
+          }));
+        setPendingRequests(formattedRequests);
+      } else {
+        throw new Error(json.message || 'Failed to load pending requests');
+      }
+    } catch (err) {
+      console.error('Fetch pending requests error:', err.message);
+      setError(`Failed to load pending requests: ${err.message}`);
+    } finally {
+      setLoadingRequests(false);
+    }
   };
 
   useEffect(() => {
@@ -234,50 +331,34 @@ export default function CounsellorHome() {
       try {
         const userData = await AsyncStorage.getItem('user');
         const token = await AsyncStorage.getItem('token');
-        
+
         if (userData && token) {
           const parsedUserData = JSON.parse(userData);
-          
-          // Check if user is a counsellor and has valid token
+
           if (parsedUserData.role === 'Counsellor' && parsedUserData.token) {
-            // Extract counsellor data from login response structure
             const counsellorInfo = parsedUserData.Counsellor || parsedUserData;
-            
-            // Process profile photo from backend structure
-            let processedData = { ...counsellorInfo };
-            if (counsellorInfo.profilePhoto && typeof counsellorInfo.profilePhoto === 'object' && counsellorInfo.profilePhoto.path) {
-              // Backend returns profilePhoto as an object with path property
-              processedData.profilePhoto = counsellorInfo.profilePhoto.path.startsWith('http') 
-                ? counsellorInfo.profilePhoto.path 
-                : `${API_BASE_URL}${counsellorInfo.profilePhoto.path}`;
-            }
-            
-            setCounsellorData(processedData);
+            setCounsellorData(counsellorInfo);
+
+            // Fetch data after counsellor data is loaded
+            await Promise.all([
+              fetchProfileInfo(token),
+              fetchDailyStats(token),
+              fetchUpcomingSessions(token),
+              fetchPendingRequests(token),
+            ]);
           } else {
-            // Not a counsellor or invalid data, redirect to login
             Alert.alert(
               'Access Denied',
               'You need to login as a counsellor to access this area.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => router.replace('/auth/login')
-                }
-              ]
+              [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
             );
             return;
           }
         } else {
-          // No authentication data, redirect to login
           Alert.alert(
             'Authentication Required',
             'Please login to continue.',
-            [
-              {
-                text: 'OK',
-                onPress: () => router.replace('/auth/login')
-              }
-            ]
+            [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
           );
           return;
         }
@@ -286,12 +367,7 @@ export default function CounsellorHome() {
         Alert.alert(
           'Error',
           'Failed to load user data. Please login again.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/auth/login')
-            }
-          ]
+          [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
         );
       } finally {
         setLoadingCounsellor(false);
@@ -309,27 +385,23 @@ export default function CounsellorHome() {
           text: 'Logout',
           onPress: async () => {
             try {
-              // Clear all possible storage locations
               await AsyncStorage.removeItem('counsellorToken');
               await AsyncStorage.removeItem('counsellorData');
               await AsyncStorage.removeItem('user');
               await AsyncStorage.removeItem('token');
-              
-              // Navigate to login screen
               router.replace('/auth/login');
-              
               Alert.alert('Success', 'You have been logged out successfully.');
             } catch (error) {
               console.error('Logout error:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
-  if (loadingCounsellor) {
+  if (loadingCounsellor || loadingProfile) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
@@ -342,7 +414,6 @@ export default function CounsellorHome() {
     );
   }
 
-  // If no counsellor data after loading, don't render the main content
   if (!counsellorData) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -359,41 +430,45 @@ export default function CounsellorHome() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 }]}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
         >
-          <CounsellorHeader counsellorData={counsellorData} onLogout={handleLogout} />
+          <CounsellorHeader profileInfo={profileInfo} onLogout={handleLogout} />
           <View style={styles.content}>
             {/* Today's Overview */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Today's Overview</Text>
-              <View style={styles.statsGrid}>
-                <StatCard
-                  icon="calendar-check"
-                  title="Sessions"
-                  value={todayStats.sessions}
-                  color="#4CAF50"
-                  onPress={() => router.push('/counsellor/main/sessions')}
-                />
-                <StatCard
-                  icon="account-plus"
-                  title="New Requests"
-                  value={todayStats.newRequests}
-                  color="#FF9800"
-                  onPress={() => router.push('/counsellor/main/requests')}
-                />
-                <StatCard
-                  icon="account-group"
-                  title="Total Clients"
-                  value={todayStats.totalClients}
-                  color="#2196F3"
-                  onPress={() => router.push('/counsellor/main/clients')}
-                />
-              </View>
+              {loadingStats ? (
+                <View style={styles.loadingSection}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text style={styles.loadingText}>Loading statistics...</Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorSection}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : (
+                <View style={styles.statsGrid}>
+                  <StatCard
+                    icon="calendar-check"
+                    title="Sessions"
+                    value={todayStats.sessions}
+                    color="#4CAF50"
+                    onPress={() => router.push('/counsellor/main/sessions')}
+                  />
+                  <StatCard
+                    icon="account-plus"
+                    title="New Requests"
+                    value={todayStats.newRequests}
+                    color="#FF9800"
+                    onPress={() => router.push('/counsellor/main/requests')}
+                  />
+                </View>
+              )}
             </View>
 
             {/* Upcoming Sessions */}
@@ -404,9 +479,25 @@ export default function CounsellorHome() {
                   <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>
-              {upcomingSessions.slice(0, 2).map((session) => (
-                <SessionCard key={session.id} session={session} />
-              ))}
+              {loadingSessions ? (
+                <View style={styles.loadingSection}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text style={styles.loadingText}>Loading sessions...</Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorSection}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : upcomingSessions.length === 0 ? (
+                <View style={styles.emptySection}>
+                  <MaterialCommunityIcons name="calendar-blank" size={32} color="#666" />
+                  <Text style={styles.emptyText}>No upcoming sessions</Text>
+                </View>
+              ) : (
+                upcomingSessions.slice(0, 2).map((session) => (
+                  <SessionCard key={session.id} session={session} />
+                ))
+              )}
             </View>
 
             {/* Pending Requests */}
@@ -417,43 +508,44 @@ export default function CounsellorHome() {
                   <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>
-              {pendingRequests.slice(0, 2).map((request) => (
-                <RequestCard key={request.id} request={request} />
-              ))}
+              {loadingRequests ? (
+                <View style={styles.loadingSection}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text style={styles.loadingText}>Loading requests...</Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorSection}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : pendingRequests.length === 0 ? (
+                <View style={styles.emptySection}>
+                  <MaterialCommunityIcons name="email-off" size={32} color="#666" />
+                  <Text style={styles.emptyText}>No pending requests</Text>
+                </View>
+              ) : (
+                pendingRequests.slice(0, 2).map((request) => (
+                  <RequestCard key={request.id} request={request} />
+                ))
+              )}
             </View>
 
             {/* Quick Actions */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text> 
-              
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
               <View style={styles.quickActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.quickActionCard}
                   onPress={() => router.push('/counsellor/settings/availability')}
                 >
                   <MaterialCommunityIcons name="calendar-clock" size={32} color="#007AFF" />
                   <Text style={styles.quickActionText}>Manage Availability</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.quickActionCard}
                   onPress={() => router.push('/counsellor/main/sessions?filter=today')}
                 >
                   <MaterialCommunityIcons name="video-plus" size={32} color="#4CAF50" />
                   <Text style={styles.quickActionText}>Scheduled Sessions</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.quickActionCard}
-                  onPress={() => router.push('/counsellor/main/profile')}
-                >
-                  <MaterialCommunityIcons name="account-cog" size={32} color="#FF9800" />
-                  <Text style={styles.quickActionText}>Profile Settings</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.quickActionCard}
-                  onPress={() => router.push('/counsellor/main/history')}
-                >
-                  <MaterialCommunityIcons name="chart-line" size={32} color="#9C27B0" />
-                  <Text style={styles.quickActionText}>View Analytics</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -463,6 +555,7 @@ export default function CounsellorHome() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -624,21 +717,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    gap: 12,
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop:'12',
+    marginTop: 12,
     gap: 12,
   },
   statCard: {
     flex: 1,
-    minWidth: (width - 56) / 3,
+    minWidth: (width - 52) / 2, // Adjusted for two cards
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
     padding: 10,
@@ -845,7 +932,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   quickActions: {
-    marginTop:'15',
+    marginTop: 15,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -875,5 +962,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     letterSpacing: -0.1,
+  },
+  loadingSection: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  errorSection: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#F44336',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  emptySection: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    fontWeight: '500',
   },
 });

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -23,27 +24,7 @@ const moodLevels = {
   Great: { height: 100, emoji: '😄' },
 };
 
-// Dummy appointment data
-const appointments = [
-  {
-    id: '1',
-    doctorName: 'Dr. Nanathya Regmi',
-    date: 'August 12 2025',
-    time: '10:00am',
-    image: 'https://randomuser.me/api/portraits/women/5.jpg',
-    specialty: 'Counseling Psychologist | 12yrs Exp',
-  },
-  {
-    id: '2',
-    doctorName: 'Dr. John Doe',
-    date: 'August 13 2025',
-    time: '2:00pm',
-    image: 'https://randomuser.me/api/portraits/men/6.jpg',
-    specialty: 'Therapist | 8yrs Exp',
-  },
-];
-
-const CustomHeader = ({ userData, onLogout }) => (
+const CustomHeader = ({ fullName, onLogout }) => (
   <View style={styles.header}>
     <View style={styles.iconContainer}>
       <View style={styles.logoContainer}>
@@ -61,7 +42,7 @@ const CustomHeader = ({ userData, onLogout }) => (
     </View>
     <View style={styles.separatorLine} />
     <View style={styles.greetingContainer}>
-      <Text style={styles.greeting}>Hello {userData?.fullName || 'Aayusha'} 👋</Text>
+      <Text style={styles.greeting}>Hello {fullName || 'Aayusha'} 👋</Text>
       <Text style={styles.message}>
         "We're glad you're here 💙 You are doing your best, and that's more than enough. Keep going—you're not alone."
       </Text>
@@ -154,17 +135,58 @@ const MoodChart = ({ history }) => {
   );
 };
 
+const UpcomingAppointmentCard = ({ appointment }) => {
+  const { counsellor, date, time } = appointment;
+  const imageUrl = `${API_BASE_URL}/uploads/profile_photos/${counsellor.profilePhoto.filename}`;
+
+  return (
+    <View style={styles.appointmentCard}>
+      <Image source={{ uri: imageUrl }} style={styles.appointmentImage} />
+      <View style={styles.appointmentDetails}>
+        <Text style={styles.appointmentDate}>{date}</Text>
+        <Text style={styles.appointmentTime}>{time}</Text>
+        <Text style={styles.appointmentDoctor}>{counsellor.fullName}</Text>
+        <Text style={styles.appointmentSpecialty}>{counsellor.designation}</Text>
+      </View>
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const { user } = useLocalSearchParams();
   const [userData, setUserData] = useState(null);
+  const [userFullName, setUserFullName] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [moodHistory, setMoodHistory] = useState([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user) setUserData(JSON.parse(user));
   }, [user]);
 
-  // Fetch functions
+  // Fetch full name from profile API
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const json = await res.json();
+      if (json.success && json.data?.fullName) {
+        setUserFullName(json.data.fullName);
+      }
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+    }
+  }, []);
+
+  // Fetch doctors
   const fetchDoctors = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -185,6 +207,7 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Fetch mood history
   const fetchMoodHistory = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -200,13 +223,46 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Use focus effect to fetch data every time screen is focused
+  // Fetch upcoming appointments
+  const fetchUpcomingAppointments = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return Alert.alert('Error', 'User token not found');
+
+      const res = await fetch(`${API_BASE_URL}/api/users/sessions`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setUpcomingAppointments(json.upcomingAppointments);
+      } else {
+        Alert.alert('Failed to load upcoming appointments');
+      }
+    } catch (err) {
+      console.error('Upcoming appointments fetch error:', err);
+      Alert.alert('Error', 'Failed to fetch upcoming appointments');
+    }
+  }, []);
+
+  // Fetch all data on screen focus
   useFocusEffect(
     useCallback(() => {
+      fetchUserProfile();
       fetchDoctors();
       fetchMoodHistory();
-    }, [fetchDoctors, fetchMoodHistory])
+      fetchUpcomingAppointments();
+    }, [fetchUserProfile, fetchDoctors, fetchMoodHistory, fetchUpcomingAppointments])
   );
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchUserProfile(), fetchDoctors(), fetchMoodHistory(), fetchUpcomingAppointments()]);
+    setRefreshing(false);
+  }, [fetchUserProfile, fetchDoctors, fetchMoodHistory, fetchUpcomingAppointments]);
 
   const handleLogout = async () => {
     try {
@@ -218,8 +274,11 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <CustomHeader userData={userData} onLogout={handleLogout} />
+    <ScrollView
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <CustomHeader fullName={userFullName} onLogout={handleLogout} />
       <View style={styles.content}>
         {/* Mood Tracker */}
         <View style={styles.moodBox}>
@@ -245,21 +304,25 @@ export default function HomeScreen() {
         {/* My Appointments */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Appointments</Text>
-          <TouchableOpacity onPress={() => router.push('/main/sessions')}><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/main/sessions')}>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
         </View>
         <FlatList
-          data={appointments}
-          keyExtractor={(item) => item.id}
+          data={upcomingAppointments}
+          keyExtractor={(item) => item._id}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 5 }}
-          renderItem={({ item }) => <AppointmentCard appointment={item} />}
+          renderItem={({ item }) => <UpcomingAppointmentCard appointment={item} />}
         />
 
         {/* Book a Session */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Book a Session</Text>
-          <TouchableOpacity onPress={() => router.push('/seeall/userside/all_sessions')}><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/seeall/userside/all_sessions')}>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
         </View>
         <FlatList
           data={doctors}
@@ -419,14 +482,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 10,
-    marginRight: 15,
-    marginVertical: 10,
-    width: 200,
+    marginHorizontal: 5,
+    width: 170,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -440,64 +502,60 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appointmentDate: {
+    fontWeight: 'bold',
     fontSize: 14,
-    color: '#666',
   },
   appointmentTime: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 12,
+    color: '#555',
   },
   appointmentDoctor: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#003087',
+    fontWeight: '600',
+    fontSize: 14,
+    marginTop: 5,
   },
   appointmentSpecialty: {
     fontSize: 12,
-    color: '#666',
+    color: '#777',
   },
   doctorCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 15,
-    marginRight: 15,
-    marginVertical: 10,
-    alignItems: 'center',
-    width: 150,
-    height: 200,
+    padding: 10,
+    marginHorizontal: 5,
+    width: 130,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+    alignItems: 'center',
   },
   doctorImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 8,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
   },
   doctorName: {
     fontWeight: 'bold',
-    fontSize: 16,
-    color: '#003087',
     textAlign: 'center',
+    fontSize: 14,
   },
   moodChartContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    height: 140,
+    paddingHorizontal: 20,
   },
   daysLabelContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 4,
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
   dayLabel: {
-    flex: 1,
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#444',
   },
 });

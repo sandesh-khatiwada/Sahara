@@ -1,5 +1,5 @@
 import express from 'express';
-import { addAvailability, getBookingRequests, getSessions, acceptBookingRequest, declineBookingRequest, getDailyStatistics, getCounsellorProfile, editCounsellorProfile, getCounsellorAvailability , getSessionHistory } from '../controllers/counsellorController.js';
+import { addAvailability, getBookingRequests, getSessions, acceptBookingRequest, declineBookingRequest, getCounsellorProfile, editCounsellorProfile, getCounsellorAvailability , getSessionHistory, getTotalStatistics } from '../controllers/counsellorController.js';
 import { verifyTokenCounsellor } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -19,7 +19,7 @@ router.post('/accept-booking', verifyTokenCounsellor, acceptBookingRequest);
 // POST /api/counsellors/decline-booking - Decline a booking request
 router.post('/decline-booking', verifyTokenCounsellor, declineBookingRequest);
 
-router.get("/daily-statistics",verifyTokenCounsellor, getDailyStatistics);
+router.get("/total-statistics",verifyTokenCounsellor, getTotalStatistics);
 
 router.get("/profile-info",verifyTokenCounsellor, getCounsellorProfile);
 

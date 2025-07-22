@@ -1,6 +1,6 @@
 import express from 'express';
 import { signup, verifyOTP, resendOTP, login } from '../controllers/authController.js';
-import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getSessions, addFeedbackAndRating, addSleepLog, getSleepLogHistory, providePrompt, getChatHistory } from '../controllers/userController.js';
+import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getSessions, addFeedbackAndRating, addSleepLog, getSleepLogHistory, providePrompt, getChatHistory, getProfileDetails, editProfileDetails } from '../controllers/userController.js';
 import { verifyTokenUser } from '../middleware/authMiddleware.js';
 import { requestPasswordReset, verifyOTPAndResetPassword } from '../controllers/authController.js';
 
@@ -15,6 +15,7 @@ router.post('/login', login);
 
 // POST /api/users/otp/verification - Verify OTP
 router.post('/otp/verification', verifyOTP);
+
 
 // POST /api/users/otp/resend - Resend OTP
 router.post('/otp/resend', resendOTP);
@@ -33,6 +34,11 @@ router.post('/password/reset', requestPasswordReset);
 
 // POST /api/users/password-reset/otp/verification - Verify OTP and reset password
 router.post('/password-reset/otp/verification', verifyOTPAndResetPassword);
+
+router.get("/profile",verifyTokenUser, getProfileDetails);
+
+router.patch("/profile",verifyTokenUser, editProfileDetails);
+
 
 // GET /api/users/counsellors - Get counsellor details (protected route)
 router.get('/counsellors', verifyTokenUser, getCounsellors);

@@ -7,96 +7,123 @@ import {
   Image,
   TouchableOpacity,
   TextInput,
+  Alert,
+  Button,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import sessionIcon from '../../../assets/image/doctor1.png'; // Placeholder icon, replace with actual asset
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@env';
 
-const dummySessions = [
-  {
-    id: 'individual',
-    name: 'Individual Counseling',
-    specialty: 'Clinical Psychology',
-    chargePerHour: 800,
-    icon: sessionIcon,
-    doctorName: 'Bikram Kharal',
-  },
-  {
-    id: 'indiddvidual',
-    name: 'Individuaddl Counseling',
-    specialty: 'Counseling Psychology',
-    chargePerHour: 500,
-    icon: sessionIcon,
-    doctorName: 'Binod Yadav',
-  },
-  {
-    id: 'group',
-    name: 'Group Therapy',
-    specialty: 'Group Therapy',
-    chargePerHour: 400,
-    icon: sessionIcon,
-    doctorName: 'Aayusha Regmi',
-  },
-  {
-    id: 'grodup',
-    name: 'Therapy',
-    specialty: 'Behavioral Therapy',
-    chargePerHour: 800,
-    icon: sessionIcon,
-    doctorName: 'Bibek Pokhrel',
-  },
-  {
-    id: 'online',
-    name: 'Online Session',
-    specialty: 'Telepsychiatry',
-    chargePerHour: 600,
-    icon: sessionIcon,
-    doctorName: 'Niranjan Pandey',
-  },
-];
+const SessionCard = ({ session }) => {
+  const imageUrl = session.profilePhoto?.filename 
+    ? `${API_BASE_URL}/Uploads/profile_photos/${session.profilePhoto.filename}`
+    : 'https://via.placeholder.com/100';
 
-const SessionCard = ({ session }) => (
-  <View style={styles.sessionCard}>
-    <Image source={session.icon} style={styles.sessionImage} />
-    <View style={styles.sessionInfo}>
-      <Text style={styles.sessionName}>{session.doctorName}</Text>
-      <Text style={styles.sessionDescription}>{session.specialty}</Text>
-      <Text style={styles.charge}>Rs {session.chargePerHour} /hr</Text>
-      <TouchableOpacity
-        style={styles.viewDetailsButton}
-        onPress={() => router.push({ pathname: './doctordetails', params: { doctorName: session.doctorName } })}
-      >
-        <Text style={styles.viewDetailsText}>Book Appointment</Text>
-      </TouchableOpacity>
+  return (
+    <View style={styles.sessionCard}>
+      <Image source={{ uri: imageUrl }} style={styles.sessionImage} />
+      <View style={styles.sessionInfo}>
+        <Text style={styles.sessionName}>{session.fullName}</Text>
+        <Text style={styles.sessionDescription}>{session.designation}</Text>
+        <Text style={styles.charge}>Rs {session.chargePerHour} /hr</Text>
+        <TouchableOpacity
+          style={styles.viewDetailsButton}
+          onPress={() => router.push({ 
+            pathname: './doctordetails', 
+            params: { 
+              email: session.email, 
+              doctorName: session.fullName 
+            } 
+          })}
+        >
+          <Text style={styles.viewDetailsText}>Book Appointment</Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 export default function SelectSessionType() {
   const [sessions, setSessions] = useState([]);
   const [filteredSessions, setFilteredSessions] = useState([]);
   const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchDoctors = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = await AsyncStorage.getItem('token');
+      console.log('Token:', token ? 'Found' : 'Not found');
+
+      if (!token) {
+        Alert.alert('Error', 'User token not found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+
+      let allCounsellors = [];
+      let page = 1;
+      let totalPages = 1;
+      const limit = 100;
+
+      while (page <= totalPages) {
+        const url = `${API_BASE_URL}/api/users/counsellors/all?page=${page}&limit=${limit}`;
+        console.log('Fetching from:', url);
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('Response status:', res.status);
+        const json = await res.json();
+        console.log('API Response:', JSON.stringify(json, null, 2));
+
+        if (json.success) {
+          allCounsellors = [...allCounsellors, ...json.data];
+          totalPages = json.totalPages || 1;
+          page += 1;
+        } else {
+          setError(json.message || 'Failed to load doctors');
+          Alert.alert('Error', json.message || 'Failed to load doctors');
+          setLoading(false);
+          return;
+        }
+      }
+
+      setSessions(allCounsellors);
+      setFilteredSessions(allCounsellors);
+    } catch (err) {
+      console.error('Fetch error:', err.message);
+      setError(`Failed to fetch doctors: ${err.message}`);
+      Alert.alert('Error', `Failed to fetch doctors: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setSessions(dummySessions);
-    setFilteredSessions(dummySessions);
+    fetchDoctors();
   }, []);
 
   const handleSearch = (text) => {
     setSearchText(text);
     const lowerText = text.toLowerCase();
-    const filtered = dummySessions.filter((session) =>
-      session.name.toLowerCase().includes(lowerText) ||
-      session.specialty.toLowerCase().includes(lowerText) ||
-      session.chargePerHour.toString().includes(lowerText) ||
-      session.doctorName.toLowerCase().includes(lowerText)
+    const filtered = sessions.filter((session) =>
+      (session.fullName?.toLowerCase().includes(lowerText) ||
+       session.designation?.toLowerCase().includes(lowerText) ||
+       session.chargePerHour?.toString().includes(lowerText)) ?? false
     );
     setFilteredSessions(filtered);
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#003087" />
@@ -104,22 +131,35 @@ export default function SelectSessionType() {
         <Text style={styles.headerTitle}>Select a Doctor</Text>
       </View>
 
-      {/* Search Field */}
       <TextInput
-        placeholder="Search by session type, specialty, price, or doctor"
+        placeholder="Search by name, designation, or price"
         placeholderTextColor="#aaa"
         value={searchText}
         onChangeText={handleSearch}
         style={styles.searchInput}
       />
 
-      {/* List */}
-      <FlatList
-        data={filteredSessions}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <SessionCard session={item} />}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text>Loading doctors...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button title="Retry" onPress={fetchDoctors} color="#003087" />
+        </View>
+      ) : filteredSessions.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <Text>No doctors found</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredSessions}
+          keyExtractor={(item) => item._id || item.id}
+          renderItem={({ item }) => <SessionCard session={item} />}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        />
+      )}
     </View>
   );
 }
@@ -202,10 +242,19 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   viewDetailsText: {
-    
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-    textAlign:'center',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#D32F2F',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });

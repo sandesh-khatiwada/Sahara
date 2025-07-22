@@ -2,328 +2,253 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
-  Image,
-  TouchableOpacity,
-  Modal,
   Alert,
-  ScrollView, // Added back for modal content
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  TouchableOpacity,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@env';
 
-// Default fallback image
-const DEFAULT_PROFILE_IMAGE = 'https://randomuser.me/api/portraits/men/5.jpg';
-
-const FAQModal = ({ visible, onClose }) => (
-  <Modal
-    visible={visible}
-    animationType="fade"
-    transparent={true}
-    onRequestClose={onClose}
-  >
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>FAQ</Text>
-          <TouchableOpacity onPress={onClose}>
-            <MaterialCommunityIcons name="close" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={styles.modalContent}>
-          <View style={styles.faqContainer}>
-            <Text style={styles.faqQuestion}>What is this app about?</Text>
-            <Text style={styles.faqAnswer}>This app helps you manage your appointments and connect with counselors.</Text>
-          </View>
-          <View style={styles.faqContainer}>
-            <Text style={styles.faqQuestion}>How do I book an appointment?</Text>
-            <Text style={styles.faqAnswer}>Go to My Appointment section and select a available time slot.</Text>
-          </View>
-          <View style={styles.faqContainer}>
-            <Text style={styles.faqQuestion}>Can I change my profile?</Text>
-            <Text style={styles.faqAnswer}>Yes, use the Edit Profile button to update your details.</Text>
-          </View>
-        </ScrollView>
-      </View>
-    </View>
-  </Modal>
-);
-
-const HelpModal = ({ visible, onClose }) => (
-  <Modal
-    visible={visible}
-    animationType="fade"
-    transparent={true}
-    onRequestClose={onClose}
-  >
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Help Center</Text>
-          <TouchableOpacity onPress={onClose}>
-            <MaterialCommunityIcons name="close" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={styles.modalContent}>
-          <Text style={styles.helpText}>Contact us at support@example.com for assistance.</Text>
-          <Text style={styles.helpText}>Phone: +1-800-555-1234 (Available 9 AM - 5 PM)</Text>
-          <Text style={styles.helpText}>Visit our website for more resources: www.examplehelp.com</Text>
-        </ScrollView>
-      </View>
-    </View>
-  </Modal>
-);
+const formatDate = (isoDate) => {
+  const date = new Date(isoDate);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
 
 export default function UserProfile() {
-  const [userData, setUserData] = useState({
-    fullName: 'User Name',
-    profilePhoto: null,
-  });
-  const [faqModalVisible, setFaqModalVisible] = useState(false);
-  const [helpModalVisible, setHelpModalVisible] = useState(false);
-
-  const getProfileImageUri = () => {
-    if (userData?.profilePhoto) {
-      return typeof userData.profilePhoto === 'string' ? userData.profilePhoto : DEFAULT_PROFILE_IMAGE;
-    }
-    return DEFAULT_PROFILE_IMAGE;
-  };
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
 
   useEffect(() => {
-    loadUserData();
+    fetchProfile();
   }, []);
 
-  const loadUserData = async () => {
+  const fetchProfile = async () => {
     try {
-      const data = await AsyncStorage.getItem('userData');
-      if (data) {
-        setUserData(JSON.parse(data));
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = await response.json();
+      if (result.success) {
+        setUserData(result.data);
+        setEditFullName(result.data.fullName);
+      } else {
+        Alert.alert('Error', 'Failed to fetch profile details');
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
-      Alert.alert('Error', 'Failed to load profile data');
+      Alert.alert('Error', 'Failed to fetch profile details');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleButtonPress = (route) => {
-    if (route === '/appointments') {
-      router.push('/dummy-appointments');
-    } else if (route === '/statistics') {
-      router.push('/dummy-statistics');
+  const handleSaveFullName = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/users/profile?fullName=${encodeURIComponent(editFullName)}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = await response.json();
+      if (result.success) {
+        setUserData(result.data);
+        setEditModalVisible(false);
+        Alert.alert('Success', 'Full name updated successfully');
+      } else {
+        Alert.alert('Error', 'Failed to update full name');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update full name');
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            setTimeout(async () => {
-              try {
-                await AsyncStorage.removeItem('userData');
-                await AsyncStorage.removeItem('token');
-                router.replace('/auth/login');
-              } catch (error) {
-                Alert.alert('Error', 'Failed to logout');
-              }
-            }, 100);
-          }
-        }
-      ]
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
     );
-  };
+  }
+
+  if (!userData) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>Failed to load user data.</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Profile Photo & Name */}
-      <View style={styles.profileHeader}>
-        <Image
-          source={{ uri: getProfileImageUri() }}
-          style={styles.profilePhoto}
-          defaultSource={{ uri: DEFAULT_PROFILE_IMAGE }}
-        />
-        <Text style={styles.profileName}>{userData.fullName}</Text>
-      </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.heading}>Your Profile</Text>
 
-      {/* Button Containers */}
-      <View style={styles.buttonSection}>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => setFaqModalVisible(true)}>
-            <MaterialCommunityIcons name="frequently-asked-questions" size={24} color="#007AFF" />
-            <Text style={styles.actionButtonText}>FAQ</Text>
-          </TouchableOpacity>
-          <View style={styles.spacer} />
-          <TouchableOpacity style={[styles.actionButton, styles.actionButtonRow]} onPress={() => handleButtonPress('/appointments')}>
-            <MaterialCommunityIcons name="calendar-check" size={24} color="#007AFF" />
-            <Text style={styles.actionButtonText}>My Appointment</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleButtonPress('/statistics')}>
-            <MaterialCommunityIcons name="chart-bar" size={24} color="#007AFF" />
-            <Text style={styles.actionButtonText}>My Statistics</Text>
-          </TouchableOpacity>
-          <View style={styles.spacer} />
-          <TouchableOpacity style={[styles.actionButton, styles.actionButtonRow]} onPress={() => setHelpModalVisible(true)}>
-            <MaterialCommunityIcons name="help-circle" size={24} color="#007AFF" />
-            <Text style={styles.actionButtonText}>Help Center</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Logout Container */}
-      <View style={styles.logoutContainer}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <MaterialCommunityIcons name="logout" size={24} color="#fff" />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+      <View style={styles.card}>
+        <TouchableOpacity onPress={() => setEditModalVisible(true)} activeOpacity={0.7}>
+          <Text style={styles.label}>Full Name</Text>
+          <Text style={[styles.value, styles.editable]}>{userData.fullName}</Text>
         </TouchableOpacity>
+
+        <View style={styles.separator} />
+
+        <Text style={styles.label}>Email</Text>
+        <Text style={styles.value}>{userData.email}</Text>
+
+        <View style={styles.separator} />
+
+        <Text style={styles.label}>Joined At</Text>
+        <Text style={styles.value}>{formatDate(userData.createdAt)}</Text>
+
+        <View style={styles.separator} />
+
+        <Text style={styles.label}>Email Verified</Text>
+        <Text style={[styles.value, { color: userData.emailVerified ? '#2e7d32' : '#c62828' }]}>
+          {userData.emailVerified ? 'Yes ✅' : 'No ❌'}
+        </Text>
       </View>
 
-      {/* FAQ Modal */}
-      <FAQModal visible={faqModalVisible} onClose={() => setFaqModalVisible(false)} />
-
-      {/* Help Modal */}
-      <HelpModal visible={helpModalVisible} onClose={() => setHelpModalVisible(false)} />
-    </View>
+      <Modal visible={editModalVisible} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Edit Full Name</Text>
+            <TextInput
+              style={styles.input}
+              value={editFullName}
+              onChangeText={setEditFullName}
+              placeholder="Enter your full name"
+              placeholderTextColor="#aaa"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.cancelButton}>
+                <Text style={[styles.buttonText, { color: '#333' }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSaveFullName} style={styles.saveButton}>
+                <Text style={[styles.buttonText, { color: '#fff' }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4f8ff',
+    backgroundColor: '#f8f9fb',
   },
-  profileHeader: {
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    marginTop: 35,
-  },
-  profilePhoto: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-  },
-  profileName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 15,
-    marginBottom: 20,
-  },
-  buttonSection: {
+  content: {
     padding: 20,
-    backgroundColor: '#fff',
-    marginTop: 10,
-    paddingBottom: 40, // Adjusted height of button container
   },
-  buttonContainer: {
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  spacer: {
-    height: 10, // Adds vertical space between buttons in the same container
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    width: '100%', // Ensures full width for each button
-  },
-  actionButtonRow: {
-    marginTop: 15, // Adds space between rows within the same container
-  },
-  actionButtonText: {
-    fontSize: 16,
+  heading: {
+    fontSize: 26,
+    fontWeight: '700',
     color: '#333',
-    marginLeft: 10,
-    fontWeight: '500',
+    alignSelf: 'center',
+    marginVertical: 20,
   },
-  logoutContainer: {
-    padding: 10,
+  card: {
     backgroundColor: '#fff',
-    marginTop: 10, // Added gap to button container
-    alignItems: 'center',
+    borderRadius: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 25,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 25,
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ff4444',
-    paddingVertical: 10,
-    paddingHorizontal: 130,
-    borderRadius: 20,
+  label: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 4,
+    marginTop: 12,
   },
-  logoutButtonText: {
-    color: '#fff',
+  value: {
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 10,
+    fontWeight: '500',
+    color: '#333',
+    paddingBottom: 8,
+  },
+  editable: {
+    color: '#007AFF',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 8,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#d00',
+    fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 30, // Slightly smaller from top
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 30,
   },
   modalContainer: {
-    width: '95%', // Increased to 95% width
-    height: '90%', // Increased to 90% height
     backgroundColor: '#fff',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    padding: 25,
+    borderRadius: 12,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalContent: {
-    padding: 20,
-    flex: 1,
-  },
-  faqContainer: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    marginBottom: 10,
-  },
-  faqQuestion: {
-    fontSize: 16,
     fontWeight: '600',
+    marginBottom: 20,
     color: '#333',
   },
-  faqAnswer: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 25,
+    color: '#333',
   },
-  helpText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  cancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  saveButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+  },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
+
+

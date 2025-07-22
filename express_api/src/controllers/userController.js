@@ -243,13 +243,14 @@ export const getCounsellors = async (req, res) => {
   }
 };
 
+
 // Fetch all counsellors with advanced filtering and aggregation
 export const getAllCounsellors = async (req, res) => {
   try {
     const { name, ratingRange, chargePerHourRange } = req.query;
     let { page = 1, limit = 10 } = req.query;
     page = parseInt(page) || 1;
-    limit = Math.min(parseInt(limit) || 10, 10); // max 10 per page
+    limit = Math.min(parseInt(limit) || 10, 100); // Increased max limit to 100
 
     const matchStage = { isActive: true };
     if (name) {
@@ -265,7 +266,6 @@ export const getAllCounsellors = async (req, res) => {
       { $match: matchStage },
       { $sort: { createdAt: -1 } },
     ];
-    // Add ratingRange filter to countPipeline if present
     if (ratingRange) {
       const [min, max] = ratingRange.split('-').map(Number);
       countPipeline.push(
@@ -414,8 +414,8 @@ export const getAllCounsellors = async (req, res) => {
                       {
                         $cond: [
                           { $lte: [{ $mod: [{ $divide: ['$$diffInMs', '$$msInYear'] }, 1] }, 0.1] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } }, ' years'] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } }, '+ years'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } } }, ' years'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } } }, '+ years'] },
                         ],
                       },
                     ],
@@ -427,8 +427,8 @@ export const getAllCounsellors = async (req, res) => {
                       {
                         $cond: [
                           { $lte: [{ $mod: [{ $divide: ['$$diffInMs', '$$msInMonth'] }, 1] }, 0.1] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } }, ' months'] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } }, '+ months'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } } }, ' months'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } } }, '+ months'] },
                         ],
                       },
                     ],
@@ -456,7 +456,6 @@ export const getAllCounsellors = async (req, res) => {
         },
       },
     ];
-    // Filter by ratingRange if provided
     if (ratingRange) {
       const [min, max] = ratingRange.split('-').map(Number);
       pipeline.push({
@@ -475,17 +474,11 @@ export const getAllCounsellors = async (req, res) => {
           _avgRatingForFilter: { $gte: min, $lte: max },
         },
       });
-      // Only add a $project stage to exclude _avgRatingForFilter if there is no existing $project stage
-      const hasProject = pipeline.some(stage => stage.$project);
-      if (!hasProject) {
-        pipeline.push({ $project: { _avgRatingForFilter: 0 } });
-      }
+      pipeline.push({ $project: { _avgRatingForFilter: 0 } });
     }
-    // Pagination: skip and limit
     pipeline.push({ $skip: (page - 1) * limit });
     pipeline.push({ $limit: limit });
     let counsellors = await Counsellor.aggregate(pipeline);
-    // Set averageRating to 0 if null in the response
     counsellors = counsellors.map(c => ({
       ...c,
       averageRating: c.averageRating == null ? 0 : c.averageRating,
@@ -507,6 +500,7 @@ export const getAllCounsellors = async (req, res) => {
     });
   }
 };
+
 
 export const getCounsellorByEmail = async (req, res) => {
   try {
@@ -604,8 +598,8 @@ export const getCounsellorByEmail = async (req, res) => {
                       {
                         $cond: [
                           { $lte: [{ $mod: [{ $divide: ['$$diffInMs', '$$msInYear'] }, 1] }, 0.1] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } }, ' years'] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } }, '+ years'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } } }, ' years'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInYear'] } } }, '+ years'] },
                         ],
                       },
                     ],
@@ -617,8 +611,8 @@ export const getCounsellorByEmail = async (req, res) => {
                       {
                         $cond: [
                           { $lte: [{ $mod: [{ $divide: ['$$diffInMs', '$$msInMonth'] }, 1] }, 0.1] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } }, ' months'] },
-                          { $concat: [{ $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } }, '+ months'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } } }, ' months'] },
+                          { $concat: [{ $toString: { $toInt: { $divide: ['$$diffInMs', '$$msInMonth'] } } }, '+ months'] },
                         ],
                       },
                     ],
@@ -1096,6 +1090,81 @@ export const providePrompt = async (req, res) => {
             error: error.message
         });
     }
+};
+
+
+export const getProfileDetails = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Fetch specific fields only
+    const user = await User.findById(userId).select('fullName email createdAt emailVerified');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        fullName: user.fullName,
+        email: user.email,
+        createdAt: user.createdAt,
+        emailVerified: user.emailVerified,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching profile details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch profile details',
+      error: error.message,
+    });
+  }
+};
+
+
+export const editProfileDetails = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { fullName } = req.query;
+
+    if (!fullName || fullName.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name is required',
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { fullName },
+      { new: true, runValidators: true }
+    ).select('fullName email createdAt emailVerified');
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile',
+      error: error.message,
+    });
+  }
 };
 
 

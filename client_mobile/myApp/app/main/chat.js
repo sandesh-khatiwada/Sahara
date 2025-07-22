@@ -10,125 +10,144 @@ import {
   Platform,
   SafeAreaView,
   Keyboard,
-  Animated,
+  ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from 'expo-router';
+import { API_BASE_URL } from '@env';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const ChatPage = () => {
-  const [messages, setMessages] = useState([
-    { id: '1', text: 'Hello! How can I help you today?', sender: 'ai', timestamp: '21:30', date: new Date().toISOString() },
-    { id: '2', text: 'Hi Sahara AI, I have a question.', sender: 'user', timestamp: '21:31', date: new Date().toISOString() },
-    { id: '3', text: 'Please ask away! I\'m here to assist.', sender: 'ai', timestamp: '21:32', date: new Date().toISOString() },
-    { id: '4', text: 'Today 21:33', isTimestamp: true, date: new Date().toISOString() },
-    { id: '5', text: 'What is the weather like in Kathmandu?', sender: 'user', timestamp: '21:33', date: new Date().toISOString() },
-    { id: '6', text: 'What is the weather like in Kathmandu?', sender: 'user', timestamp: '21:33', date: new Date().toISOString() },
-    { id: '7', text: 'What is the weather like in Kathmandu?', sender: 'user', timestamp: '21:33', date: new Date().toISOString() },
-    { id: '8', text: 'What is the weather like in Kathmandu?', sender: 'user', timestamp: '00:33', date: new Date().toISOString() },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
+  const [isLoadingAIResponse, setIsLoadingAIResponse] = useState(false);
+  const [forceLayout, setForceLayout] = useState(false); // Added to force layout reset
   const flatListRef = useRef(null);
-  const inputAnimation = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
 
-  // Handle keyboard show/hide for input field animation
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      Animated.timing(inputAnimation, {
-        toValue: e.endCoordinates.height,
-        duration: 250,
-        useNativeDriver: false,
-      }).start();
-      if (flatListRef.current) {
-        flatListRef.current.scrollToEnd({ animated: true });
-      }
-    });
+  const scrollToBottom = useCallback(() => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true });
+      console.log('Scrolled to bottom');
+    } else {
+      console.log('FlatList ref not ready');
+    }
+  }, []);
 
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      Animated.timing(inputAnimation, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: false,
-      }).start();
+  const fetchChatHistory = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/users/chat-history`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const formattedMessages = data.data.flatMap(item => [
+          {
+            id: item._id + '-prompt',
+            text: item.prompt,
+            sender: 'user',
+            timestamp: item.timestamp,
+          },
+          {
+            id: item._id + '-response',
+            text: item.aiResponse,
+            sender: 'ai',
+            timestamp: item.timestamp,
+          },
+        ]);
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.log('Fetch history error:', error);
+    }
+  };
+
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      await fetchChatHistory();
+      const attemptScroll = (attempt = 1) => {
+        if (attempt > 2) return;
+        setTimeout(() => {
+          if (messages.length > 0) {
+            scrollToBottom();
+          } else {
+            console.log(`Retry scroll attempt ${attempt}: No messages yet`);
+            attemptScroll(attempt + 1);
+          }
+        }, attempt * 150);
+      };
+      attemptScroll();
+    };
+    loadChatHistory();
+  }, [scrollToBottom]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, scrollToBottom]);
+
+  useEffect(() => {
+    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
+      console.log('Keyboard dismissed, resetting layout');
+      setForceLayout(prev => !prev); // Toggle to force re-render
+      scrollToBottom();
     });
 
     return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
+      keyboardDidHide.remove();
     };
-  }, [inputAnimation]);
+  }, [scrollToBottom]);
 
-  // Scroll to bottom when messages update
-  useEffect(() => {
-    if (flatListRef.current) {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  }, [messages]);
+  const handleSendMessage = useCallback(async () => {
+    if (!inputText.trim()) return;
+    const now = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      text: inputText.trim(),
+      sender: 'user',
+      timestamp: now,
+    };
 
-  const handleSendMessage = useCallback(() => {
-    if (inputText.trim()) {
-      const now = new Date();
-      const newHour = now.getHours();
-      const newMinute = now.getMinutes();
-      const formattedTime = `${newHour < 10 ? '0' : ''}${newHour}:${newMinute < 10 ? '0' : ''}${newMinute}`;
-      const currentDate = now.toISOString().split('T')[0];
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+    Keyboard.dismiss();
+    setIsLoadingAIResponse(true);
 
-      const newMessage = {
-        id: String(messages.length + 1),
-        text: inputText.trim(),
-        sender: 'user',
-        timestamp: formattedTime,
-        date: now.toISOString(),
-      };
-
-      setMessages((prevMessages) => {
-        const lastMessage = prevMessages[prevMessages.length - 1];
-        let newMessages = [...prevMessages];
-
-        const shouldAddTimestamp = () => {
-          if (!lastMessage) return true;
-          if (lastMessage.isTimestamp) {
-            const lastTimestampDate = new Date(lastMessage.date).toISOString().split('T')[0];
-            return lastTimestampDate !== currentDate;
-          }
-          const lastMessageTime = new Date(lastMessage.date);
-          const timeDiff = (now - lastMessageTime) / 1000 / 60;
-          const lastMessageDate = lastMessageTime.toISOString().split('T')[0];
-          return timeDiff > 5 || lastMessageDate !== currentDate;
-        };
-
-        if (shouldAddTimestamp()) {
-          newMessages.push({
-            id: `ts-${Date.now()}`,
-            text: `Today ${formattedTime}`,
-            isTimestamp: true,
-            date: now.toISOString(),
-          });
-        }
-        newMessages.push(newMessage);
-        return newMessages;
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/users/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ prompt: userMessage.text }),
       });
-      setInputText('');
-      setTimeout(() => {
-        if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({ animated: true });
-        }
-      }, 100);
+
+      const data = await response.json();
+      if (response.ok) {
+        const aiMessage = {
+          id: `ai-${Date.now()}`,
+          text: data.data.aiResponse,
+          sender: 'ai',
+          timestamp: now,
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }
+    } catch (error) {
+      console.log('Error sending prompt:', error);
+    } finally {
+      setIsLoadingAIResponse(false);
     }
-  }, [inputText, messages]);
+  }, [inputText]);
 
   const renderMessage = ({ item }) => {
-    if (!item || !item.id || typeof item.text !== 'string') {
-      return null;
-    }
-
-    if (item.isTimestamp) {
-      return (
-        <View style={styles.timestampContainer}>
-          <Text style={styles.timestampText}>{item.text}</Text>
-        </View>
-      );
-    }
+    if (!item?.id || typeof item.text !== 'string') return null;
 
     const isUser = item.sender === 'user';
     return (
@@ -154,60 +173,58 @@ const ChatPage = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sahara</Text>
-          <TouchableOpacity style={styles.alertIconPlaceholder}>
-            <Text style={styles.alertIconText}>🔔</Text>
-          </TouchableOpacity>
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} // Reduced to minimize margin
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Sahara</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messageListContent}
-          keyboardShouldPersistTaps="handled"
-        />
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.messageListContent}
+            keyboardShouldPersistTaps="handled"
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            onContentSizeChange={scrollToBottom}
+          />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 40}
-          style={styles.inputAreaWrapper}
-        >
-          <Animated.View
-            style={[
-              styles.inputContainer,
-              {
-                transform: [
-                  {
-                    translateY: inputAnimation.interpolate({
-                      inputRange: [0, 1000],
-                      outputRange: [0, -1000],
-                    }),
-                  },
-                ],
-              },
-            ]}
+          {isLoadingAIResponse && (
+            <View style={styles.aiLoadingContainer}>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <Text style={{ marginLeft: 10, color: '#333' }}>AI is thinking...</Text>
+            </View>
+          )}
+
+          <View
+            style={styles.inputContainer}
+            onLayout={(e) => console.log('Input container position:', e.nativeEvent.layout)} // Added for debugging
+            key={forceLayout ? 'layout1' : 'layout2'} // Force re-render on keyboard dismiss
           >
             <TextInput
               style={styles.textInput}
-              placeholder="Share anything"
+              placeholder="Ask anything..."
               placeholderTextColor="#999"
               value={inputText}
               onChangeText={setInputText}
               multiline
+              onSubmitEditing={handleSendMessage}
             />
             <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
               <Text style={styles.sendButtonText}>↵</Text>
             </TouchableOpacity>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -220,7 +237,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#E0E7ED',
-    marginTop:30,
+    // Removed marginTop: 30 to avoid layout interference
   },
   header: {
     flexDirection: 'row',
@@ -228,14 +245,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     paddingHorizontal: 15,
-    backgroundColor: '#D8E0E8', // Slightly darker shade for header
+    backgroundColor: '#D8E0E8',
     borderBottomWidth: 1,
     borderBottomColor: '#CCC',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
   },
   backButton: {
     width: 40,
@@ -247,20 +259,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    flex: 1,
     textAlign: 'center',
-  },
-  alertIconPlaceholder: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  alertIconText: {
-    fontSize: 22,
+    flex: 1,
   },
   messageListContent: {
-    marginTop:10,
     paddingBottom: 20,
     paddingHorizontal: 15,
   },
@@ -280,33 +282,36 @@ const styles = StyleSheet.create({
     marginRight: 'auto',
   },
   messageBubble: {
-    padding: 12,
-    borderRadius: 15,
-    minHeight: 40,
-    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 16,
+    marginVertical: 4,
+    maxWidth: '80%',
+    elevation: 2,
   },
   userBubble: {
-    backgroundColor: '#ADD8E6',
+    backgroundColor: '#007AFF',
     borderBottomRightRadius: 2,
     marginRight: 8,
   },
   aiBubble: {
-    backgroundColor: '#D3D3D3',
+    backgroundColor: '#F0F0F0',
     borderBottomLeftRadius: 2,
     marginLeft: 8,
   },
   userMessageText: {
-    fontSize: 15,
-    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   aiMessageText: {
-    fontSize: 15,
+    fontSize: 16,
+    fontWeight: '500',
     color: '#333',
   },
   userAvatarPlaceholder: {
     width: 30,
     height: 30,
-    margin:5,
+    margin: 5,
     borderRadius: 15,
     borderWidth: 1,
     borderColor: '#CCC',
@@ -316,7 +321,6 @@ const styles = StyleSheet.create({
   },
   userAvatarText: {
     fontSize: 18,
-    lineHeight: 20,
   },
   aiIconPlaceholder: {
     width: 30,
@@ -330,22 +334,6 @@ const styles = StyleSheet.create({
   },
   aiIconText: {
     fontSize: 18,
-    lineHeight: 20,
-  },
-  timestampContainer: {
-    alignSelf: 'center',
-    marginVertical: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  timestampText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  inputAreaWrapper: {
-    paddingBottom: 10,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -368,8 +356,6 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     fontSize: 16,
     color: '#333',
-    paddingHorizontal: 5,
-    paddingVertical: 0,
   },
   sendButton: {
     backgroundColor: '#2C3E50',
@@ -383,7 +369,12 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: '#FFF',
     fontSize: 20,
-    lineHeight: 20,
+  },
+  aiLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
 });
 

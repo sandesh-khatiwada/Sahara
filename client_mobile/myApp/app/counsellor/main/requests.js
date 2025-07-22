@@ -282,40 +282,51 @@ const handleAcceptRequest = async (requestId) => {
   }
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
-          <ScrollView
-            style={styles.requestsList}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-          >
-            {requests.length === 0 && (
-              <Text style={styles.noRequestsText}>No booking requests at the moment.</Text>
-            )}
-            {requests.map((request) => (
-              <RequestCard
-                key={request.id}
-                request={request}
-                onAccept={handleAcceptRequest}
-                onReject={openDeclineModal}
-                onViewDetails={handleViewDetails}
-                loadingAcceptId={loadingAcceptId}
-              />
-            ))}
-          </ScrollView>
+  <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <View style={styles.headerGlass}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Appointment Requests</Text>
+              </View>
+            </View>
+          </View>
         </View>
-        <DeclineModal
-          visible={declineModalVisible}
-          onClose={() => setDeclineModalVisible(false)}
-          onSubmit={handleDeclineRequest}
-          loading={declineLoading}
-        />
-      </SafeAreaView>
-    </View>
-  );
+      </View>
+      <View style={styles.content}>
+        <ScrollView
+          style={styles.requestsList}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          {requests.length === 0 && (
+            <Text style={styles.noRequestsText}>No booking requests at the moment.</Text>
+          )}
+          {requests.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+              onAccept={handleAcceptRequest}
+              onReject={openDeclineModal}
+              onViewDetails={handleViewDetails}
+              loadingAcceptId={loadingAcceptId}
+            />
+          ))}
+        </ScrollView>
+      </View>
+      <DeclineModal
+        visible={declineModalVisible}
+        onClose={() => setDeclineModalVisible(false)}
+        onSubmit={handleDeclineRequest}
+        loading={declineLoading}
+      />
+    </SafeAreaView>
+  </View>
+);
 }
 
 const styles = StyleSheet.create({

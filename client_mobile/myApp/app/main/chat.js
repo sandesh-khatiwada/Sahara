@@ -21,18 +21,28 @@ const ChatPage = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoadingAIResponse, setIsLoadingAIResponse] = useState(false);
-  const [forceLayout, setForceLayout] = useState(false); // Added to force layout reset
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
   const flatListRef = useRef(null);
   const navigation = useNavigation();
 
   const scrollToBottom = useCallback(() => {
-    if (flatListRef.current) {
+    if (flatListRef.current && !isUserScrolling) {
       flatListRef.current.scrollToEnd({ animated: true });
       console.log('Scrolled to bottom');
     } else {
-      console.log('FlatList ref not ready');
+      console.log('Scroll prevented: FlatList ref not ready or user is scrolling');
     }
-  }, []);
+  }, [isUserScrolling]);
+
+  const handleScroll = (event) => {
+    const scrollOffset = event.nativeEvent.contentOffset.y;
+    const contentHeight = event.nativeEvent.contentSize.height;
+    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+    // Consider user scrolling if they are not near the bottom (within 50 pixels)
+    const isNearBottom = contentHeight - scrollOffset - layoutHeight < 50;
+    setIsUserScrolling(!isNearBottom);
+    console.log('Scroll offset:', scrollOffset, 'Is user scrolling:', !isNearBottom);
+  };
 
   const fetchChatHistory = async () => {
     try {
@@ -60,6 +70,7 @@ const ChatPage = () => {
           },
         ]);
         setMessages(formattedMessages);
+        setTimeout(scrollToBottom, 150); // Scroll after messages are set
       }
     } catch (error) {
       console.log('Fetch history error:', error);
@@ -67,41 +78,21 @@ const ChatPage = () => {
   };
 
   useEffect(() => {
-    const loadChatHistory = async () => {
-      await fetchChatHistory();
-      const attemptScroll = (attempt = 1) => {
-        if (attempt > 2) return;
-        setTimeout(() => {
-          if (messages.length > 0) {
-            scrollToBottom();
-          } else {
-            console.log(`Retry scroll attempt ${attempt}: No messages yet`);
-            attemptScroll(attempt + 1);
-          }
-        }, attempt * 150);
-      };
-      attemptScroll();
-    };
-    loadChatHistory();
-  }, [scrollToBottom]);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages, scrollToBottom]);
+    fetchChatHistory();
+  }, []);
 
   useEffect(() => {
     const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
-      console.log('Keyboard dismissed, resetting layout');
-      setForceLayout(prev => !prev); // Toggle to force re-render
-      scrollToBottom();
+      console.log('Keyboard dismissed');
+      if (!isUserScrolling) {
+        scrollToBottom();
+      }
     });
 
     return () => {
       keyboardDidHide.remove();
     };
-  }, [scrollToBottom]);
+  }, [isUserScrolling, scrollToBottom]);
 
   const handleSendMessage = useCallback(async () => {
     if (!inputText.trim()) return;
@@ -116,6 +107,7 @@ const ChatPage = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     Keyboard.dismiss();
+    setIsUserScrolling(false); // Allow scroll to bottom for new message
     setIsLoadingAIResponse(true);
 
     try {
@@ -138,13 +130,14 @@ const ChatPage = () => {
           timestamp: now,
         };
         setMessages(prev => [...prev, aiMessage]);
+        setTimeout(scrollToBottom, 150); // Scroll after AI response
       }
     } catch (error) {
       console.log('Error sending prompt:', error);
     } finally {
       setIsLoadingAIResponse(false);
     }
-  }, [inputText]);
+  }, [inputText, scrollToBottom]);
 
   const renderMessage = ({ item }) => {
     if (!item?.id || typeof item.text !== 'string') return null;
@@ -171,62 +164,72 @@ const ChatPage = () => {
     );
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} // Reduced to minimize margin
-      >
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Sahara</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messageListContent}
-            keyboardShouldPersistTaps="handled"
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-            onContentSizeChange={scrollToBottom}
-          />
-
-          {isLoadingAIResponse && (
-            <View style={styles.aiLoadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
-              <Text style={{ marginLeft: 10, color: '#333' }}>AI is thinking...</Text>
-            </View>
-          )}
-
-          <View
-            style={styles.inputContainer}
-            onLayout={(e) => console.log('Input container position:', e.nativeEvent.layout)} // Added for debugging
-            key={forceLayout ? 'layout1' : 'layout2'} // Force re-render on keyboard dismiss
-          >
-            <TextInput
-              style={styles.textInput}
-              placeholder="Ask anything..."
-              placeholderTextColor="#999"
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              onSubmitEditing={handleSendMessage}
-            />
-            <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-              <Text style={styles.sendButtonText}>↵</Text>
-            </TouchableOpacity>
-          </View>
+ return (
+  <SafeAreaView style={styles.safeArea}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Sahara</Text>
+          <View style={{ width: 24 }} />
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messageListContent}
+          keyboardShouldPersistTaps="handled"
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        />
+
+        {isLoadingAIResponse && (
+          <View style={styles.aiLoadingContainer}>
+            <ActivityIndicator size="small" color="#007AFF" />
+            <Text style={{ marginLeft: 10, color: '#333' }}>AI is thinking...</Text>
+          </View>
+        )}
+
+        {isUserScrolling && (
+          <TouchableOpacity
+            style={styles.scrollToBottomButton}
+            onPress={() => {
+              setIsUserScrolling(false);
+              scrollToBottom();
+            }}
+          >
+            <MaterialCommunityIcons name="arrow-down" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Ask anything..."
+            placeholderTextColor="#999"
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            onSubmitEditing={handleSendMessage}
+          />
+          <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
+            <Text style={styles.sendButtonText}>↵</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  </SafeAreaView>
+);
+
 };
 
 const styles = StyleSheet.create({
@@ -237,7 +240,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#E0E7ED',
-    // Removed marginTop: 30 to avoid layout interference
   },
   header: {
     flexDirection: 'row',
@@ -254,6 +256,22 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  scrollToBottomButton: {
+    position: 'absolute',
+    bottom: 80, // Above inputContainer
+    right: 20,
+    backgroundColor: '#007AFF',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   headerTitle: {
     fontSize: 18,

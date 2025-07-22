@@ -34,8 +34,8 @@ const CustomHeader = ({ fullName, onLogout }) => (
           resizeMode="contain"
         />
       </View>
-      <MaterialCommunityIcons name="magnify" size={40} color="#003087" />
-      <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" />
+      {/* <MaterialCommunityIcons name="magnify" size={40} color="#003087" /> */}
+      {/* <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" /> */}
       <TouchableOpacity onPress={onLogout}>
         <MaterialCommunityIcons name="logout" size={40} color="#003087" />
       </TouchableOpacity>

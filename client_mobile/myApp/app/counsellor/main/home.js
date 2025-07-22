@@ -44,17 +44,19 @@ const formatTime = (timeStr) => {
   return `${adjustedHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
+// Utility to format currency (e.g., 5000 to "$5,000")
+const formatCurrency = (amount) => {
+  return `$${amount.toLocaleString('en-US')}`;
+};
+
 const CounsellorHeader = ({ profileInfo, onLogout }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
   const getProfileImageUri = () => {
     if (imageError) return DEFAULT_PROFILE_IMAGE;
-
     if (profileInfo?.profilePhoto?.path) {
-      return `${API_BASE_URL}/uploads/profile_photos/${profileInfo.profilePhoto.filename}`
-
-       
+      return `${API_BASE_URL}/uploads/profile_photos/${profileInfo.profilePhoto.filename}`;
     }
     return DEFAULT_PROFILE_IMAGE;
   };
@@ -173,7 +175,12 @@ export default function CounsellorHome() {
   const [profileInfo, setProfileInfo] = useState(null);
   const [loadingCounsellor, setLoadingCounsellor] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [todayStats, setTodayStats] = useState({ sessions: 0, newRequests: 0 });
+  const [totalStats, setTotalStats] = useState({
+    completedSessions: 0,
+    pendingSessions: 0,
+    totalRevenue: 0,
+    totalClients: 0,
+  });
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -233,10 +240,10 @@ export default function CounsellorHome() {
     }
   };
 
-  const fetchDailyStats = async (token) => {
+  const fetchTotalStats = async (token) => {
     try {
       setLoadingStats(true);
-      const res = await fetch(`${API_BASE_URL}/api/counsellors/daily-statistics`, {
+      const res = await fetch(`${API_BASE_URL}/api/counsellors/total-statistics`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -245,16 +252,18 @@ export default function CounsellorHome() {
       });
       const json = await res.json();
       if (json.success && json.data) {
-        setTodayStats({
-          sessions: json.data.numberOfSessions || 0,
-          newRequests: json.data.newRequests || 0,
+        setTotalStats({
+          completedSessions: json.data.completedSessions || 0,
+          pendingSessions: json.data.pendingSessions || 0,
+          totalRevenue: json.data.totalRevenue || 0,
+          totalClients: json.data.totalClients || 0,
         });
       } else {
-        throw new Error(json.message || 'Failed to load daily statistics');
+        throw new Error(json.message || 'Failed to load total statistics');
       }
     } catch (err) {
-      console.error('Fetch daily stats error:', err.message);
-      setError(`Failed to load daily statistics: ${err.message}`);
+      console.error('Fetch total stats error:', err.message);
+      setError(`Failed to load total statistics: ${err.message}`);
     } finally {
       setLoadingStats(false);
     }
@@ -342,7 +351,7 @@ export default function CounsellorHome() {
             // Fetch data after counsellor data is loaded
             await Promise.all([
               fetchProfileInfo(token),
-              fetchDailyStats(token),
+              fetchTotalStats(token),
               fetchUpcomingSessions(token),
               fetchPendingRequests(token),
             ]);
@@ -439,9 +448,9 @@ export default function CounsellorHome() {
         >
           <CounsellorHeader profileInfo={profileInfo} onLogout={handleLogout} />
           <View style={styles.content}>
-            {/* Today's Overview */}
+            {/* Total Overview */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Today's Overview</Text>
+              <Text style={styles.sectionTitle}>Total Overview</Text>
               {loadingStats ? (
                 <View style={styles.loadingSection}>
                   <ActivityIndicator size="small" color="#007AFF" />
@@ -455,17 +464,30 @@ export default function CounsellorHome() {
                 <View style={styles.statsGrid}>
                   <StatCard
                     icon="calendar-check"
-                    title="Sessions"
-                    value={todayStats.sessions}
+                    title="Completed Sessions"
+                    value={totalStats.completedSessions}
                     color="#4CAF50"
                     onPress={() => router.push('/counsellor/main/sessions')}
                   />
                   <StatCard
                     icon="account-plus"
-                    title="New Requests"
-                    value={todayStats.newRequests}
+                    title="Pending Requests"
+                    value={totalStats.pendingSessions}
                     color="#FF9800"
                     onPress={() => router.push('/counsellor/main/requests')}
+                  />
+                  <StatCard
+                    icon="currency-inr"
+                    title="Total Revenue"
+                    value={formatCurrency(totalStats.totalRevenue)}
+                    color="#2196F3"
+                  />
+                  <StatCard
+                    icon="account-group"
+                    title="Total Clients"
+                    value={totalStats.totalClients}
+                    color="#9C27B0"
+                
                   />
                 </View>
               )}
@@ -555,7 +577,6 @@ export default function CounsellorHome() {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -725,7 +746,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    minWidth: (width - 52) / 2, // Adjusted for two cards
+    minWidth: (width - 52) / 2, // Adjusted for two cards per row
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
     padding: 10,
@@ -824,25 +845,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
-  joinButton: {
-    flexDirection: 'row',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  joinButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 4,
-  },
   requestCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
@@ -900,36 +902,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
-  },
-  requestActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  acceptButton: {
-    backgroundColor: '#4CAF50',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  rejectButton: {
-    backgroundColor: '#F44336',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#F44336',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
   },
   quickActions: {
     marginTop: 15,

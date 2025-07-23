@@ -1198,3 +1198,46 @@ export const getChatHistory = async (req, res) => {
     });
   }
 };
+
+
+export const setUserJoinedTrue = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+
+    // Validate sessionId
+    if (!sessionId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Session ID is required' 
+      });
+    }
+
+    // Update the session's userJoinStatus
+    const updatedSession = await Session.findByIdAndUpdate(
+      sessionId,
+      { $set: { userJoinStatus: true } },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedSession) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Session not found' 
+      });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'User join status updated successfully',
+      session: updatedSession
+    });
+
+  } catch (error) {
+    console.error('Error updating user join status:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error updating session status', 
+      error: error.message 
+    });
+  }
+};

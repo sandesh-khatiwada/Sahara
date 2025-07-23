@@ -14,6 +14,9 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView } from 'react-native-webview';
+import { Camera } from 'expo-camera';
+import { Audio } from 'expo-av';
 import { API_BASE_URL } from '@env';
 
 // Star component for rating UI
@@ -35,6 +38,24 @@ const Session = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [videoCallModalVisible, setVideoCallModalVisible] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+
+  // Request camera and microphone permissions
+  useEffect(() => {
+    const requestPermissions = async () => {
+      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
+      const { status: audioStatus } = await Audio.requestPermissionsAsync();
+      if (cameraStatus !== 'granted' || audioStatus !== 'granted') {
+        Alert.alert(
+          'Permissions Required',
+          'Camera and microphone permissions are needed for video calls.',
+          [{ text: 'OK', onPress: () => {} }]
+        );
+      }
+    };
+    requestPermissions();
+  }, []);
 
   const fetchSessions = async () => {
     try {
@@ -96,7 +117,7 @@ const Session = () => {
 
       mappedAppointments.upcoming.sort((a, b) => new Date(a.date) - new Date(b.date));
       mappedAppointments.pending.sort((a, b) => new Date(a.date) - new Date(b.date));
-      mappedAppointments.past.sort((a, b) => new Date(b.date) - new Date(a.date));
+      mappedAppointments.past.sort((a, b) => new Date(b.date) - new Date(b.date));
       setAppointments(mappedAppointments);
     } catch (err) {
       setError(`Failed to fetch sessions: ${err.message}`);
@@ -148,7 +169,6 @@ const Session = () => {
 
       if (json.success) {
         Alert.alert('Success', 'Feedback submitted successfully!');
-        // Update appointment locally with new feedback & rating
         setAppointments((prev) => ({
           ...prev,
           past: prev.past.map((appt) =>
@@ -167,6 +187,42 @@ const Session = () => {
     } catch (error) {
       console.error('Feedback submission error:', error);
       Alert.alert('Error', 'An error occurred while submitting feedback.');
+    }
+  };
+
+const openVideoCallModal = async (sessionId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Error', 'You need to be logged in to join the call');
+        return;
+      }
+
+      // Make API call to notify server that user joined
+      const response = await fetch(`${API_BASE_URL}/api/users/user-joined`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sessionId: sessionId
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to join session');
+      }
+
+      // Only open the video call modal if API call succeeds
+      setSelectedSessionId(sessionId);
+      setVideoCallModalVisible(true);
+      
+    } catch (error) {
+      console.error('Error joining session:', error);
+      Alert.alert('Error', error.message || 'Failed to join the session');
     }
   };
 
@@ -194,7 +250,10 @@ const Session = () => {
         {app.date} {app.time}
       </Text>
       {app.status === 'happeningNow' && (
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => openVideoCallModal(app.id)}
+        >
           <Text style={styles.buttonText}>Join Call</Text>
         </TouchableOpacity>
       )}
@@ -269,6 +328,7 @@ const Session = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#E3F2FD' }}>
+      {/* Feedback Modal */}
       <Modal
         transparent
         visible={feedbackModalVisible}
@@ -277,7 +337,6 @@ const Session = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Leave Feedback</Text>
-
             <Text style={{ fontWeight: 'bold', marginBottom: 8, color: '#003087' }}>
               Rating
             </Text>
@@ -290,7 +349,6 @@ const Session = () => {
                 />
               ))}
             </View>
-
             <TextInput
               multiline
               placeholder="Write your feedback..."
@@ -310,6 +368,44 @@ const Session = () => {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Video Call Modal */}
+      <Modal
+        transparent={false}
+        visible={videoCallModalVisible}
+        onRequestClose={() => setVideoCallModalVisible(false)}
+        animationType="slide"
+      >
+        <View style={styles.videoCallModalContainer}>
+          <View style={styles.videoCallHeader}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setVideoCallModalVisible(false)}
+            >
+              <MaterialCommunityIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.videoCallTitle}>Video Call</Text>
+          </View>
+          {selectedSessionId ? (
+            <WebView
+              source={{ uri: `https://meet.systemli.org/${selectedSessionId}#config.requireDisplayName=false&config.startWithVideoMuted=true` }}
+              style={styles.webview}
+              javaScriptEnabled={true}
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('WebView error:', nativeEvent);
+                Alert.alert('Error', 'Failed to load video call. Please try again.');
+              }}
+            />
+          ) : (
+            <View style={styles.loading}>
+              <Text style={styles.loadingText}>Loading video call...</Text>
+            </View>
+          )}
         </View>
       </Modal>
 
@@ -639,6 +735,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 15,
+  },
+  videoCallModalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  videoCallHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#007AFF',
+  },
+  videoCallTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginLeft: 10,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  webview: {
+    flex: 1,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
   },
 });
 

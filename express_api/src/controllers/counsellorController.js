@@ -501,3 +501,5 @@ export const getSessionHistory = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching session history', error: error.message });
   }
 };
+
+

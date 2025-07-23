@@ -46,6 +46,10 @@ const sessionSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     }
+  },
+  userJoinStatus:{
+    type:Boolean,
+    default:false,
   }
 }, { timestamps: true });  
 

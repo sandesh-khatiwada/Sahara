@@ -11,17 +11,18 @@ import {
   Modal,
   Alert,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useNavbar } from './_layout';
 import { API_BASE_URL } from '@env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { Camera } from 'expo-camera';
+import { Audio } from 'expo-av';
+import { WebView } from 'react-native-webview';
 
 const { width, height } = Dimensions.get('window');
-// const API_BASE_URL = 'YOUR_API_BASE_URL'; // Replace with your actual API base url
-
 
 const SessionCard = ({ session, onPress, onJoin }) => {
   const getStatusColor = (status) => {
@@ -74,7 +75,10 @@ const SessionCard = ({ session, onPress, onJoin }) => {
             <Text style={styles.paymentStatusText}>₹: {session.paymentStatus.toUpperCase()}</Text>
           </View>
           {session.status === 'upcoming' && (
-            <TouchableOpacity style={styles.joinButton} onPress={() => onJoin(session)}>
+            <TouchableOpacity 
+              style={styles.joinButton} 
+              onPress={() => onJoin(session)}
+            >
               <MaterialCommunityIcons name="video" size={16} color="#fff" />
               <Text style={styles.joinButtonText}>Join</Text>
             </TouchableOpacity>
@@ -121,12 +125,45 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
             </View>
           </View>
         </ScrollView>
+      </View>
+    </Modal>
+  );
+};
 
-        {session.status === 'upcoming' && (
-          <View style={styles.modalActions}>
-            {/* <TouchableOpacity style={[styles.modalJoinButton, styles.modalJoinButtonFullWidth]}>
-              <Text style={styles.modalJoinButtonText}>Join Session</Text>
-            </TouchableOpacity> */}
+const VideoCallModal = ({ visible, sessionId, onClose }) => {
+  return (
+    <Modal
+      transparent={false}
+      visible={visible}
+      onRequestClose={onClose}
+      animationType="slide"
+    >
+      <View style={styles.videoCallModalContainer}>
+        <View style={styles.videoCallHeader}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={onClose}
+          >
+            <MaterialCommunityIcons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.videoCallTitle}>Video Call</Text>
+        </View>
+        {sessionId ? (
+          <WebView
+            source={{ uri: `https://meet.systemli.org/${sessionId}#config.requireDisplayName=false&config.startWithVideoMuted=true` }}
+            style={styles.webview}
+            javaScriptEnabled={true}
+            allowsInlineMediaPlayback={true}
+            mediaPlaybackRequiresUserAction={false}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.error('WebView error:', nativeEvent);
+              Alert.alert('Error', 'Failed to load video call. Please try again.');
+            }}
+          />
+        ) : (
+          <View style={styles.loading}>
+            <Text style={styles.loadingText}>Loading video call...</Text>
           </View>
         )}
       </View>
@@ -141,6 +178,8 @@ export default function CounsellorSessions() {
   const [selectedFilter, setSelectedFilter] = useState(initialFilter || 'all');
   const [selectedSession, setSelectedSession] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [videoCallModalVisible, setVideoCallModalVisible] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const { hideNavbar, showNavbar } = useNavbar();
@@ -149,88 +188,118 @@ export default function CounsellorSessions() {
 
   useEffect(() => {
     fetchSessions();
+    requestPermissions();
   }, []);
 
   useEffect(() => {
     filterSessions(selectedFilter);
   }, [selectedFilter, sessions]);
 
-  const fetchSessions = async () => {
-  try {
-    const token = await AsyncStorage.getItem('token');
-    const res = await fetch(`${API_BASE_URL}/api/counsellors/sessions`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    const data = await res.json();
-    if (data.success) {
-      const formattedSessions = data.data.map((session) => ({
-        id: session._id,
-        clientName: session.user.fullName,
-        type: session.noteTitle || 'Counseling Session',
-        date: session.date,
-        time: session.time,
-        duration: '60 minutes',
-        status: session.status === 'accepted' ? 'upcoming' : session.status,
-        paymentStatus: session.paymentStatus,
-        notes: session.noteDescription || '',
-      }));
-      setSessions(formattedSessions);
+  const requestPermissions = async () => {
+    const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
+    const { status: audioStatus } = await Audio.requestPermissionsAsync();
+    if (cameraStatus !== 'granted' || audioStatus !== 'granted') {
+      Alert.alert(
+        'Permissions Required',
+        'Camera and microphone permissions are needed for video calls.',
+        [{ text: 'OK' }]
+      );
     }
-  } catch (error) {
-    console.log('Failed to fetch sessions:', error);
-  }
-};
+  };
 
+  const fetchSessions = async () => {
+    try {
+      setRefreshing(true);
+      const token = await AsyncStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/counsellors/sessions`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await res.json();
+      if (data.success) {
+        const formattedSessions = data.data.map((session) => ({
+          id: session._id,
+          clientName: session.user.fullName,
+          type: session.noteTitle || 'Counseling Session',
+          date: session.date,
+          time: session.time,
+          duration: '60 minutes',
+          status: session.status === 'accepted' ? 'upcoming' : session.status,
+          paymentStatus: session.paymentStatus,
+          notes: session.noteDescription || '',
+        }));
+        setSessions(formattedSessions);
+      }
+    } catch (error) {
+      console.log('Failed to fetch sessions:', error);
+      Alert.alert('Error', 'Failed to fetch sessions. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-const filters = [
-  { key: 'all', label: 'All Sessions', icon: 'calendar-multiple' },
-  { key: 'today', label: 'Today', icon: 'calendar-today' },
-  { key: 'upcoming', label: 'Upcoming', icon: 'clock-outline' },
-  { key: 'completed', label: 'Completed', icon: 'check-circle-outline' },
-];
+  const filters = [
+    { key: 'all', label: 'All Sessions', icon: 'calendar-multiple' },
+    { key: 'today', label: 'Today', icon: 'calendar-today' },
+    { key: 'upcoming', label: 'Upcoming', icon: 'clock-outline' },
+    { key: 'completed', label: 'Completed', icon: 'check-circle-outline' },
+  ];
 
+  const filterSessions = (filter) => {
+    const today = new Date().toISOString().split('T')[0];
 
-const filterSessions = (filter) => {
-  const today = new Date().toISOString().split('T')[0];
-
-  let filtered = sessions;
-  switch (filter) {
-    case 'today':
-      filtered = sessions.filter((session) => session.date === today);
-      break;
-    case 'upcoming':
-      filtered = sessions.filter((session) => session.date > today && session.status !== 'completed');
-      break;
-    case 'completed':
-      filtered = sessions.filter((session) => session.status === 'completed');
-      break;
-    default:
-      filtered = sessions;
-  }
-  setFilteredSessions(filtered);
-};
-
+    let filtered = sessions;
+    switch (filter) {
+      case 'today':
+        filtered = sessions.filter((session) => session.date === today);
+        break;
+      case 'upcoming':
+        filtered = sessions.filter((session) => session.date >= today && session.status === 'upcoming');
+        break;
+      case 'completed':
+        filtered = sessions.filter((session) => session.status === 'completed');
+        break;
+      default:
+        filtered = sessions;
+    }
+    setFilteredSessions(filtered);
+  };
 
   const handleSessionPress = (session) => {
     setSelectedSession(session);
     setModalVisible(true);
   };
 
-  const handleJoinSession = (session) => {
-    Alert.alert('Join Session', `Join the ${session.type} with ${session.clientName}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Join', onPress: () => Alert.alert('Joining...', 'Joining session...') },
-    ]);
+  const handleJoinSession = async (session) => {
+    try {
+      const { status: cameraStatus } = await Camera.getCameraPermissionsAsync();
+      const { status: audioStatus } = await Audio.getPermissionsAsync();
+      
+      if (cameraStatus !== 'granted' || audioStatus !== 'granted') {
+        Alert.alert(
+          'Permissions Required',
+          'Please enable camera and microphone access to join the video call',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return;
+      }
+
+      setSelectedSessionId(session.id);
+      setVideoCallModalVisible(true);
+    } catch (error) {
+      console.error('Error joining session:', error);
+      Alert.alert('Error', 'Failed to join the session. Please try again.');
+    }
   };
 
   const onRefresh = async () => {
-    setRefreshing(true);
     await fetchSessions();
-    setRefreshing(false);
   };
 
   const handleScroll = (event) => {
@@ -274,7 +343,11 @@ const filterSessions = (filter) => {
         <FlatList
           data={filteredSessions}
           renderItem={({ item }) => (
-            <SessionCard session={item} onPress={handleSessionPress} onJoin={handleJoinSession} />
+            <SessionCard 
+              session={item} 
+              onPress={handleSessionPress} 
+              onJoin={handleJoinSession} 
+            />
           )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.sessionsContent, { paddingBottom: 20 }]}
@@ -300,6 +373,15 @@ const filterSessions = (filter) => {
         onClose={() => {
           setModalVisible(false);
           setSelectedSession(null);
+        }}
+      />
+
+      <VideoCallModal
+        visible={videoCallModalVisible}
+        sessionId={selectedSessionId}
+        onClose={() => {
+          setVideoCallModalVisible(false);
+          setSelectedSessionId(null);
         }}
       />
     </View>
@@ -381,10 +463,6 @@ const styles = StyleSheet.create({
   modalSessionType: { fontSize: 14, color: '#007AFF', fontWeight: '600' },
   modalInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   modalInfoText: { fontSize: 16, color: '#333', marginLeft: 12, fontWeight: '500' },
-  modalActions: { flexDirection: 'row', padding: 20, backgroundColor: 'rgba(255, 255, 255, 0.95)' },
-  modalJoinButton: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#4CAF50', alignItems: 'center' },
-  modalJoinButtonFullWidth: { flex: 1, width: '100%' },
-  modalJoinButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   paymentStatusBadge: (status) => ({
     marginTop: 5,
     marginBottom:5,
@@ -394,4 +472,36 @@ const styles = StyleSheet.create({
     backgroundColor: status === 'pending' ? '#FFA726' : '#4CAF50',
   }),
   paymentStatusText: { fontSize: 11, color: '#fff', fontWeight: '600', textAlign: 'center' },
+  videoCallModalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  videoCallHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#007AFF',
+  },
+  videoCallTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginLeft: 10,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  webview: {
+    flex: 1,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  loadingText: {
+    color: '#fff',
+    fontSize: 16,
+  },
 });

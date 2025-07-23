@@ -1,6 +1,6 @@
 import express from 'express';
 import { signup, verifyOTP, resendOTP, login } from '../controllers/authController.js';
-import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getSessions, addFeedbackAndRating, addSleepLog, getSleepLogHistory, providePrompt, getChatHistory, getProfileDetails, editProfileDetails } from '../controllers/userController.js';
+import { addJournal, getJournals, getMoodHistory, getCounsellors, getAllCounsellors, getCounsellorByEmail, bookCounsellorSession, getPendingAppointments, getSessions, addFeedbackAndRating, addSleepLog, getSleepLogHistory, providePrompt, getChatHistory, getProfileDetails, editProfileDetails, setUserJoinedTrue } from '../controllers/userController.js';
 import { verifyTokenUser } from '../middleware/authMiddleware.js';
 import { requestPasswordReset, verifyOTPAndResetPassword } from '../controllers/authController.js';
 
@@ -51,6 +51,9 @@ router.get('/counsellor',verifyTokenUser, getCounsellorByEmail);
 
 // POST /api/users/counsellor-booking - Book a counsellor session (protected route)
 router.post('/counsellor-booking', verifyTokenUser, bookCounsellorSession);
+
+
+router.post("/user-joined",verifyTokenUser, setUserJoinedTrue)
 
 // GET /api/users/pending-appointments - Get pending appointments (protected route)
 router.get('/pending-appointments', verifyTokenUser, getPendingAppointments);

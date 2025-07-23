@@ -14,6 +14,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@env';
+import Slider from '@react-native-community/slider';
+import { Picker } from '@react-native-picker/picker';
 
 // Mood mapping
 const moodLevels = {
@@ -24,18 +26,24 @@ const moodLevels = {
   Great: { height: 100, emoji: '😄' },
 };
 
+// Sleep quality color mapping
+const sleepQualityColors = {
+  Poor: '#FF6B6B',
+  Fair: '#FFD93D',
+  Good: '#6BCB77',
+  Excellent: '#4D96FF',
+};
+
 const CustomHeader = ({ fullName, onLogout }) => (
   <View style={styles.header}>
     <View style={styles.iconContainer}>
       <View style={styles.logoContainer}>
         <Image 
-          source={require('./../../assets/image/SaharaAppIcon.png')} 
+          source={require('./../../assets/image/SaharaAppIcon.png')}
           style={styles.logo}
           resizeMode="contain"
         />
       </View>
-      {/* <MaterialCommunityIcons name="magnify" size={40} color="#003087" /> */}
-      {/* <MaterialCommunityIcons name="bell-outline" size={40} color="#003087" /> */}
       <TouchableOpacity onPress={onLogout}>
         <MaterialCommunityIcons name="logout" size={40} color="#003087" />
       </TouchableOpacity>
@@ -63,7 +71,7 @@ const AppointmentCard = ({ appointment }) => (
 );
 
 const DoctorCard = ({ doctor }) => {
-  const imageUrl = `${API_BASE_URL}/uploads/profile_photos/${doctor.profilePhoto.filename}`;
+  const imageUrl = `${API_BASE_URL}/Uploads/profile_photos/${doctor.profilePhoto.filename}`;
   return (
     <TouchableOpacity style={styles.doctorCard}>
       <Image source={{ uri: imageUrl }} style={styles.doctorImage} />
@@ -77,7 +85,7 @@ const DoctorCard = ({ doctor }) => {
 const MoodBar = ({ mood }) => {
   const level = moodLevels[mood];
   return (
-    <View style={{ alignItems: 'center', marginHorizontal: 8, height: 140, justifyContent: 'flex-end' }}>
+    <View style={{ alignItems: 'center', marginHorizontal: 8, height: 150, justifyContent: 'flex-end' }}>
       <View
         style={{
           width: 30,
@@ -102,7 +110,6 @@ const MoodChart = ({ history }) => {
     }
   });
 
-  // Calculate average mood for each day
   const moodsForDays = days.map(day => {
     const moods = dayMoodMap[day];
     const avgMood =
@@ -114,16 +121,13 @@ const MoodChart = ({ history }) => {
 
   return (
     <View>
-      {/* Bars + emojis row */}
-      <View style={[styles.moodChartContainer, { height: 140 }]}>
+      <View style={[styles.moodChartContainer, { height: 140}]}>
         {moodsForDays.map((mood, index) => (
           <View key={days[index]} style={{ flex: 1, alignItems: 'center' }}>
             {mood ? <MoodBar mood={mood} /> : <View style={{ height: 140 }} />}
           </View>
         ))}
       </View>
-
-      {/* Days label row */}
       <View style={styles.daysLabelContainer}>
         {days.map(day => (
           <Text key={day} style={styles.dayLabel}>
@@ -135,9 +139,93 @@ const MoodChart = ({ history }) => {
   );
 };
 
+const SleepBar = ({ hours, quality }) => {
+  const height = hours ? hours * 10 : 0; // Scale hours to height (10px per hour)
+  const backgroundColor = quality ? sleepQualityColors[quality] : '#E0E0E0';
+  return (
+    <View style={{ alignItems: 'center', marginHorizontal: 8, height: 140, justifyContent: 'flex-end' }}>
+      {hours && (
+        <Text style={styles.barLabel}>{hours}h</Text>
+      )}
+      <View
+        style={{
+          width: 30,
+          height,
+          backgroundColor,
+          borderRadius: 8,
+          marginBottom: 5,
+        }}
+      />
+    </View>
+  );
+};
+
+const SleepChart = ({ history }) => {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const today = new Date('2025-07-23T17:34:00+05:45');
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return {
+      date: `${month}/${day}/${year}`,
+      day: days[date.getDay()],
+    };
+  }).reverse();
+
+  const daySleepMap = {};
+  last7Days.forEach(({ date, day }) => (daySleepMap[date] = { day, hours: null, quality: null }));
+  history.forEach(entry => {
+    const normalizedEntryDate = entry.date; // API date is already in MM/DD/YYYY
+    if (last7Days.some(d => d.date === normalizedEntryDate)) {
+      daySleepMap[normalizedEntryDate] = { 
+        day: entry.day, 
+        hours: entry.hoursSlept, 
+        quality: entry.quality 
+      };
+    }
+  });
+  console.log('Sleep History:', history);
+  console.log('Last 7 Days:', last7Days);
+  console.log('Day Sleep Map:', daySleepMap);
+
+  return (
+    <View>
+      <View style={[styles.sleepChartContainer, { height: 140 }]}>
+        {last7Days.map(({ date, day }) => (
+          <View key={date} style={{ flex: 1, alignItems: 'center' }}>
+            <SleepBar hours={daySleepMap[date].hours} quality={daySleepMap[date].quality} />
+          </View>
+        ))}
+      </View>
+      <View style={styles.daysLabelContainer}>
+        {last7Days.map(({ day }) => (
+          <Text key={day} style={styles.dayLabel}>
+            {day}
+          </Text>
+        ))}
+      </View>
+      <View style={styles.legendContainer}>
+        {Object.keys(sleepQualityColors).map(quality => (
+          <View key={quality} style={styles.legendItem}>
+            <View style={[styles.legendColorBox, { backgroundColor: sleepQualityColors[quality] }]} />
+            <Text style={styles.legendText}>{quality}</Text>
+          </View>
+        ))}
+        <View style={styles.legendItem}>
+          <View style={[styles.legendColorBox, { backgroundColor: '#E0E0E0' }]} />
+          <Text style={styles.legendText}>No Data</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const UpcomingAppointmentCard = ({ appointment }) => {
   const { counsellor, date, time } = appointment;
-  const imageUrl = `${API_BASE_URL}/uploads/profile_photos/${counsellor.profilePhoto.filename}`;
+  const imageUrl = `${API_BASE_URL}/Uploads/profile_photos/${counsellor.profilePhoto.filename}`;
 
   return (
     <View style={styles.appointmentCard}>
@@ -158,14 +246,17 @@ export default function HomeScreen() {
   const [userFullName, setUserFullName] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [moodHistory, setMoodHistory] = useState([]);
+  const [sleepHistory, setSleepHistory] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [hoursSlept, setHoursSlept] = useState(8);
+  const [sleepQuality, setSleepQuality] = useState('Poor');
+  const [sleepLogLoading, setSleepLogLoading] = useState(false);
 
   useEffect(() => {
     if (user) setUserData(JSON.parse(user));
   }, [user]);
 
-  // Fetch full name from profile API
   const fetchUserProfile = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -186,7 +277,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Fetch doctors
   const fetchDoctors = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -207,7 +297,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Fetch mood history
   const fetchMoodHistory = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -223,7 +312,25 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Fetch upcoming appointments
+  const fetchSleepHistory = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/users/sleep-logs-history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSleepHistory(json.data);
+      } else {
+        console.error('Sleep history fetch failed:', json.message);
+      }
+    } catch (err) {
+      console.error('Sleep history fetch error:', err);
+    }
+  }, []);
+
   const fetchUpcomingAppointments = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -247,22 +354,64 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Fetch all data on screen focus
+  const logSleep = async () => {
+    try {
+      setSleepLogLoading(true);
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        router.replace('/auth/login');
+        Alert.alert('Error', 'You need to be logged in to log sleep');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/users/sleep-log`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          hoursSlept: hoursSlept.toString(),
+          quality: sleepQuality,
+        }),
+      });
+
+      const json = await response.json();
+      if (json.success) {
+        Alert.alert('Success', json.message || 'Sleep log added successfully.');
+        fetchSleepHistory();
+      } else {
+        Alert.alert('Error', json.message || 'Failed to log sleep.');
+      }
+    } catch (error) {
+      console.error('Sleep log error:', error);
+      Alert.alert('Error', 'Failed to log sleep: ' + error.message);
+    } finally {
+      setSleepLogLoading(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchUserProfile();
       fetchDoctors();
       fetchMoodHistory();
+      fetchSleepHistory();
       fetchUpcomingAppointments();
-    }, [fetchUserProfile, fetchDoctors, fetchMoodHistory, fetchUpcomingAppointments])
+    }, [fetchUserProfile, fetchDoctors, fetchMoodHistory, fetchSleepHistory, fetchUpcomingAppointments])
   );
 
-  // Pull to refresh handler
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchUserProfile(), fetchDoctors(), fetchMoodHistory(), fetchUpcomingAppointments()]);
+    await Promise.all([
+      fetchUserProfile(),
+      fetchDoctors(),
+      fetchMoodHistory(),
+      fetchSleepHistory(),
+      fetchUpcomingAppointments(),
+    ]);
     setRefreshing(false);
-  }, [fetchUserProfile, fetchDoctors, fetchMoodHistory, fetchUpcomingAppointments]);
+  }, [fetchUserProfile, fetchDoctors, fetchMoodHistory, fetchSleepHistory, fetchUpcomingAppointments]);
 
   const handleLogout = async () => {
     try {
@@ -298,6 +447,48 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity style={styles.saveMoodButton} onPress={() => router.push('/main/journals')}>
             <Text style={styles.saveMoodText}>Save Today's Mood</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sleep Log */}
+        <View style={styles.moodBox}>
+          <View style={styles.headerRow}>
+            <Text style={styles.sectionTitle}>Sleep Log</Text>
+          </View>
+          <Text style={{ marginBottom: 10 }}>How many hours did you sleep last night?</Text>
+          <Slider
+            style={styles.slider}
+            minimumValue={0}
+            maximumValue={12}
+            step={0.5}
+            value={hoursSlept}
+            onValueChange={setHoursSlept}
+            minimumTrackTintColor="#007AFF"
+            maximumTrackTintColor="#E0E0E0"
+            thumbTintColor="#007AFF"
+          />
+          <Text style={styles.sliderValue}>{hoursSlept} hours</Text>
+          <Text style={{ marginVertical: 10 }}>How was the quality of your sleep?</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={sleepQuality}
+              onValueChange={(itemValue) => setSleepQuality(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Poor" value="Poor" />
+              <Picker.Item label="Fair" value="Fair" />
+              <Picker.Item label="Good" value="Good" />
+              <Picker.Item label="Excellent" value="Excellent" />
+            </Picker>
+          </View>
+          <TouchableOpacity
+            style={[styles.saveMoodButton, sleepLogLoading && styles.disabledButton]}
+            onPress={logSleep}
+            disabled={sleepLogLoading}
+          >
+            <Text style={styles.saveMoodText}>
+              {sleepLogLoading ? 'Logging Sleep...' : 'Log Sleep'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -343,6 +534,15 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.saveMoodButton}>
             <Text style={styles.saveMoodText}>View Detailed Analysis</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Sleep History */}
+        <View style={[styles.moodBox, { marginTop: 20 }]}>
+          <Text style={styles.sectionTitle}>Sleep History</Text>
+          <Text style={{ color: '#666', marginBottom: 10 }}>
+            Your sleep over the last week.
+          </Text>
+          <SleepChart history={sleepHistory} />
         </View>
       </View>
     </ScrollView>
@@ -547,6 +747,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 20,
   },
+  sleepChartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+  },
   daysLabelContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -557,5 +762,72 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#444',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 10,
+    marginVertical: 5,
+  },
+  legendColorBox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    marginRight: 5,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#333',
+  },
+  barLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  slider: {
+    width: '100%',
+    height: 70,
+    marginVertical: 10,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+  },
+  sliderValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#003087',
+    textAlign: 'center',
+    marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    marginVertical: 10,
+    backgroundColor: '#fff',
+    height: 50,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+    color: '#333',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
   },
 });

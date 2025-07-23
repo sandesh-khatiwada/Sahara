@@ -7,6 +7,8 @@ import adminRoutes from "./routes/adminRoutes.js";
 import counsellorRoutes from "./routes/counsellorRoutes.js";
 import Session from './models/Session.js';
 import cron from 'node-cron'; 
+import paymentRoutes from "./routes/paymentRoutes.js"
+import bodyParser from 'body-parser';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -25,6 +27,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -34,6 +39,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/users', userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use('/api/counsellors', counsellorRoutes); 
+app.use('/api/payments', paymentRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

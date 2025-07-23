@@ -34,6 +34,7 @@ const sessionSchema = new mongoose.Schema({
     enum: ['pending', 'completed'],
     default: 'pending'
   },
+  transaction_uuid: { type: String },
   rating: {
     type: Number,
     min: 1,

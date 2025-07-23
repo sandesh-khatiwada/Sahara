@@ -1000,13 +1000,10 @@ export const addSleepLog = async (req, res) => {
 export const getSleepLogHistory = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { filter } = req.body;
+       
 
         let limit = 7; // default is weekly
-        if (filter === 'monthly') {
-            limit = 30;
-        }
-
+      
         const sleepLogs = await SleepLog.find({ user: userId })
             .sort({ timestamp: -1 }) // Latest first
             .limit(limit)

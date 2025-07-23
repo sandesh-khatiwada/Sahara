@@ -5,19 +5,21 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Modal,
   TextInput,
   Alert,
   ScrollView,
   RefreshControl,
+  Linking,
+  Modal
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WebView } from 'react-native-webview';
 import { Camera } from 'expo-camera';
 import { Audio } from 'expo-av';
 import { API_BASE_URL } from '@env';
+import { WebView } from 'react-native-webview';
+
 
 // Star component for rating UI
 const Star = ({ filled, onPress }) => (
@@ -40,6 +42,93 @@ const Session = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [videoCallModalVisible, setVideoCallModalVisible] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [paymentLoadingMap, setPaymentLoadingMap] = useState({}); // Track loading per appointmentId
+
+  // Handle deep links
+  useEffect(() => {
+    const handleDeepLink = async ({ url }) => {
+      console.log('Deep link received:', url, 'at:', new Date().toISOString());
+      try {
+        if (url.includes('sahara://payment/success')) {
+          console.log('Payment success deep link triggered');
+          Alert.alert('Success', 'Payment completed successfully!');
+          setPaymentLoadingMap({});
+          fetchSessions();
+        } else if (url.includes('sahara://payment/failure')) {
+          console.log('Payment failure deep link triggered');
+          Alert.alert(
+            'Error',
+            'Payment failed or was cancelled.',
+            [
+              { text: 'OK', onPress: () => setPaymentLoadingMap({}) },
+              { text: 'Retry', onPress: () => initiatePayment(paymentLoadingMap.lastAppointmentId) },
+            ]
+          );
+        } else {
+          console.warn('Unhandled deep link:', url);
+        }
+      } catch (error) {
+        console.error('Deep link handling error:', error);
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('Initial URL:', url);
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  const initiatePayment = async (appointmentId) => {
+    try {
+      setPaymentLoadingMap((prev) => ({ ...prev, [appointmentId]: true, lastAppointmentId: appointmentId }));
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        router.replace('/login');
+        Alert.alert('Error', 'You need to be logged in to make a payment');
+        return;
+      }
+
+      // Find the appointment to get chargePerHour
+      const appointment = appointments.upcoming.find((appt) => appt.id === appointmentId);
+      if (!appointment || !appointment.chargePerHour) {
+        console.error('Appointment or chargePerHour not found:', appointmentId);
+        Alert.alert('Error', 'Unable to fetch payment amount');
+        return;
+      }
+
+      const startTime = new Date().toISOString();
+      console.log('Initiating payment for appointment:', appointmentId, 'at', startTime);
+      const response = await fetch(`${API_BASE_URL}/api/payments/initiate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          appointmentId,
+        }),
+      });
+
+      const json = await response.json();
+      if (json.success) {
+        console.log('Payment form URL received:', json.formUrl);
+        await Linking.openURL(json.formUrl);
+      } else {
+        console.error('Payment initiation failed:', json.message);
+        Alert.alert('Error', json.message || 'Failed to initiate payment');
+      }
+    } catch (error) {
+      console.error('Payment initiation error:', error);
+      Alert.alert('Error', 'Failed to initiate payment: ' + error.message);
+    } finally {
+      setPaymentLoadingMap((prev) => ({ ...prev, [appointmentId]: false }));
+    }
+  };
 
   // Request camera and microphone permissions
   useEffect(() => {
@@ -62,7 +151,10 @@ const Session = () => {
       if (!refreshing) setLoading(true);
       setError(null);
       const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('User token not found. Please log in again.');
+      if (!token) {
+        router.replace('/login');
+        throw new Error('User token not found. Please log in again.');
+      }
 
       const sessionsRes = await fetch(`${API_BASE_URL}/api/users/sessions`, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -99,10 +191,11 @@ const Session = () => {
           time: appt.time,
           status: appt.status === 'accepted' ? 'confirmed' : appt.status,
           paymentPending: appt.paymentStatus === 'pending',
+          chargePerHour: appt.counsellor.chargePerHour, // Assume API returns this
         };
         const now = new Date();
         const timeDiff = Math.abs(new Date(appt.dateTime) - now) / 1000 / 60;
-        if (timeDiff <= 30 && appt.status === 'accepted') appointment.status = 'happeningNow';
+        if (timeDiff <= 3000000000 && appt.status === 'accepted' && appt.paymentStatus==='completed') appointment.status = 'happeningNow';
 
         mappedAppointments.upcoming.push(appointment);
       });
@@ -150,7 +243,10 @@ const Session = () => {
 
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('User not authenticated');
+      if (!token) {
+        router.replace('/login');
+        throw new Error('User not authenticated');
+      }
 
       const res = await fetch(`${API_BASE_URL}/api/users/session-feedback`, {
         method: 'POST',
@@ -190,15 +286,15 @@ const Session = () => {
     }
   };
 
-const openVideoCallModal = async (sessionId) => {
+  const openVideoCallModal = async (sessionId) => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
+        router.replace('/login');
         Alert.alert('Error', 'You need to be logged in to join the call');
         return;
       }
 
-      // Make API call to notify server that user joined
       const response = await fetch(`${API_BASE_URL}/api/users/user-joined`, {
         method: 'POST',
         headers: {
@@ -206,7 +302,7 @@ const openVideoCallModal = async (sessionId) => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          sessionId: sessionId
+          sessionId: sessionId,
         }),
       });
 
@@ -216,10 +312,8 @@ const openVideoCallModal = async (sessionId) => {
         throw new Error(result.message || 'Failed to join session');
       }
 
-      // Only open the video call modal if API call succeeds
       setSelectedSessionId(sessionId);
       setVideoCallModalVisible(true);
-      
     } catch (error) {
       console.error('Error joining session:', error);
       Alert.alert('Error', error.message || 'Failed to join the session');
@@ -249,6 +343,7 @@ const openVideoCallModal = async (sessionId) => {
       <Text style={styles.dateText}>
         {app.date} {app.time}
       </Text>
+       
       {app.status === 'happeningNow' && (
         <TouchableOpacity
           style={styles.actionButton}
@@ -258,8 +353,14 @@ const openVideoCallModal = async (sessionId) => {
         </TouchableOpacity>
       )}
       {app.status === 'confirmed' && app.paymentPending && (
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.buttonText}>Make Payment</Text>
+        <TouchableOpacity
+          style={[styles.actionButton, paymentLoadingMap[app.id] && styles.disabledButton]}
+          onPress={() => initiatePayment(app.id)}
+          disabled={paymentLoadingMap[app.id]}
+        >
+          <Text style={styles.buttonText}>
+            {paymentLoadingMap[app.id] ? 'Initiating Payment...' : 'Make Payment'}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -397,7 +498,7 @@ const openVideoCallModal = async (sessionId) => {
               mediaPlaybackRequiresUserAction={false}
               onError={(syntheticEvent) => {
                 const { nativeEvent } = syntheticEvent;
-                console.error('WebView error:', nativeEvent);
+                console.error('Video call WebView error:', nativeEvent);
                 Alert.alert('Error', 'Failed to load video call. Please try again.');
               }}
             />
@@ -623,6 +724,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     minWidth: 280,
   },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
   feedbackButton: {
     backgroundColor: '#757575',
     paddingVertical: 8,
@@ -706,6 +810,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
     color: '#003087',
+  },
+  modalText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
   },
   feedbackInput: {
     height: 100,

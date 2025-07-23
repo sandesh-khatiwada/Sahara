@@ -409,13 +409,13 @@ const Home = () => {
                   letterSpacing: '-0.02em'
                 }}
               >
-                🚀 Command Center
+                🚀 Sahara Admin Panel
               </Typography>
               <Typography variant="h6" sx={{ color: '#475569', mb: 1 }}>
-                Welcome back, Administrator! 
+                Welcome back, Admin! 
               </Typography>
               <Typography variant="body1" sx={{ color: '#64748b' }}>
-                Monitor your mental health platform's performance in real-time
+                Monitor Sahara's performance in real-time
               </Typography>
             </Box>
             <Box sx={{ position: 'relative', zIndex: 1 }}>

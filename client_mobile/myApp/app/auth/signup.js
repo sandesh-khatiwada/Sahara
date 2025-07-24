@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ImageBackground, StyleSheet, Dimensions, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ImageBackground,
+  StyleSheet,
+  Dimensions,
+  Alert,
+  ActivityIndicator, // Make sure to import ActivityIndicator if you use loading state
+  ScrollView, // Import ScrollView
+  KeyboardAvoidingView, // Import KeyboardAvoidingView
+  Platform, // Import Platform to check OS
+  StatusBar // Import StatusBar to manage status bar height
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import InputWithIcon from '../components/inputwithicons.js';
-import { API_BASE_URL } from '@env'; 
-
-
+import { API_BASE_URL } from '@env';
 
 const { width, height } = Dimensions.get('window');
 
@@ -58,10 +69,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      
-        const response = await fetch(`${API_BASE_URL}/api/users`, {
-
-
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,114 +97,140 @@ const Signup = () => {
       }
     } catch (error) {
       Alert.alert('Error', `Failed to connect to the server: ${error.message}`);
-     
       console.log('API error details:', error);
-      
     } finally {
       setLoading(false);
     }
   };
 
+  // Adjust keyboardVerticalOffset carefully.
+  // For iOS, a small positive offset might be needed if the top of the content is cut off.
+  // For Android, 0 is often sufficient with 'height' behavior, but experiment if needed.
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? 0 : 0; // Start with 0
+
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={require('../../assets/image/signup.png')}
-        style={styles.backgroundImage}
-      />
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Register</Text>
-        <Text style={styles.subtitle}>Join Sahara for support that cares.</Text>
-        <InputWithIcon
-          label="Full Name"
-          iconName="account-outline"
-          placeholder="Full Name"
-          value={fullName}
-          onChangeText={setFullName}
-          autoCapitalize="words"
-          editable={!loading}
-        />
-        <InputWithIcon
-          label="Email"
-          iconName="email-outline"
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!loading}
-        />
-        <InputWithIcon
-          label="Password"
-          iconName="lock-outline"
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          showPassword={showPassword}
-          togglePassword={() => setShowPassword(!showPassword)}
-          editable={!loading}
-        />
-        <InputWithIcon
-          label="Confirm Password"
-          iconName="lock-outline"
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry={!showConfirmPassword}
-          showPassword={showConfirmPassword}
-          togglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-          editable={!loading}
-        />
-        <TouchableOpacity
-          style={[styles.continueButton, loading && styles.disabledButton]}
-          onPress={handleContinue}
-          disabled={loading}
-        >
-          <Text style={styles.continueButtonText}>
-            {loading ? 'Registering...' : 'Continue'}
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.orContainer}>
-          <View style={styles.line} />
-          <Text style={styles.orText}>OR</Text>
-          <View style={styles.line} />
-        </View>
-        <TouchableOpacity onPress={() => router.push('/auth/login')}>
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginPrompt}>Already have an account? </Text>
-            <Text style={styles.loginText}>Login</Text>
+    <KeyboardAvoidingView
+      style={styles.avoidingView}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollViewContent}
+        keyboardShouldPersistTaps="handled" // Keep the keyboard open when tapping outside an input
+        showsVerticalScrollIndicator={false} // Hide the scroll indicator
+      >
+        <View style={styles.container}>
+          <ImageBackground
+            source={require('../../assets/image/signup.png')}
+            style={styles.backgroundImage}
+          />
+
+          {/* This is the form container that now also holds the title/subtitle */}
+          <View style={styles.formContainer}>
+            {/* The title and subtitle are now inside this container */}
+            <Text style={styles.title}>Register</Text>
+            <Text style={styles.subtitle}>Join Sahara for support that cares.</Text>
+
+            <InputWithIcon
+              label="Full Name"
+              iconName="account-outline"
+              placeholder="Full Name"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              editable={!loading}
+            />
+            <InputWithIcon
+              label="Email"
+              iconName="email-outline"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!loading}
+            />
+            <InputWithIcon
+              label="Password"
+              iconName="lock-outline"
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              showPassword={showPassword}
+              togglePassword={() => setShowPassword(!showPassword)}
+              editable={!loading}
+            />
+            <InputWithIcon
+              label="Confirm Password"
+              iconName="lock-outline"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              showPassword={showConfirmPassword}
+              togglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={[styles.continueButton, loading && styles.disabledButton]}
+              onPress={handleContinue}
+              disabled={loading}
+            >
+              <Text style={styles.continueButtonText}>
+                {loading ? 'Registering...' : 'Continue'}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.orContainer}>
+              <View style={styles.line} />
+              <Text style={styles.orText}>OR</Text>
+              <View style={styles.line} />
+            </View>
+            <TouchableOpacity onPress={() => router.push('/auth/login')}>
+              <View style={styles.loginContainer}>
+                <Text style={styles.loginPrompt}>Already have an account? </Text>
+                <Text style={styles.loginText}>Login</Text>
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      </View>
-    </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  avoidingView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1, // Allows content to expand to fill available space
+  },
+  container: {
+    flex: 1, // Container fills the scroll view
     backgroundColor: '#E3F2FD',
   },
   backgroundImage: {
     width: '100%',
-    height: height * 0.3,
+    height: height * 0.3, // Fixed height for the image
   },
   formContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    flex: 1, // Allows the form container to take remaining space and expand
     alignItems: 'center',
     paddingHorizontal: 10,
     backgroundColor: '#E3F2FD',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    marginTop: -10,
-    paddingTop: 40,
+    // Key adjustment: Negative margin to pull it up over the image
+    marginTop: -80, // Adjust this value to control the overlap
+    paddingTop: 40, // Padding at the top of the form fields
+    paddingBottom: 20, // Padding at the bottom for scrollability
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
-    marginTop: -80,
+    color: '#000', // Set a color that contrasts well on your background
+    // No marginTop here; its position is handled by formContainer's marginTop
   },
   subtitle: {
     fontSize: 16,

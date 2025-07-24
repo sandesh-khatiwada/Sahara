@@ -9,6 +9,8 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Modal,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +26,10 @@ const journals = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [journalHistory, setJournalHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // NEW STATES FOR MODAL
+  const [selectedJournal, setSelectedJournal] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const moodOptions = [
     { emoji: '😢', value: 'Bad' },
@@ -42,19 +48,13 @@ const journals = () => {
         router.replace('/auth/login');
         return;
       }
-
       const res = await fetch(`${API_BASE_URL}/api/users/journals`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to fetch journal history.');
-      }
+      if (!res.ok) throw new Error(data.message || 'Failed to fetch journal history.');
 
       setJournalHistory(data.data);
     } catch (err) {
@@ -87,7 +87,6 @@ const journals = () => {
 
     try {
       setIsSaving(true);
-
       const response = await fetch(`${API_BASE_URL}/api/users/journals`, {
         method: 'POST',
         headers: {
@@ -103,10 +102,7 @@ const journals = () => {
       });
 
       const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to save journal entry');
-      }
+      if (!response.ok) throw new Error(responseData.message || 'Failed to save journal entry');
 
       const predictions = responseData.data.emotionalTone.predictions;
       const emotionText = predictions
@@ -119,8 +115,8 @@ const journals = () => {
       setMood(null);
       setThoughts('');
       setShareWithCounselor(false);
-      fetchJournalHistory(); // refresh history
-      setActiveTab('Journal History'); // optionally switch tab
+      fetchJournalHistory();
+      setActiveTab('Journal History');
     } catch (error) {
       Alert.alert('Error', error.message || 'An error occurred while saving the entry');
     } finally {
@@ -129,14 +125,20 @@ const journals = () => {
   };
 
   const renderJournalItem = ({ item }) => (
-    <View style={styles.historyItem}>
+    <TouchableOpacity
+      onPress={() => {
+        setSelectedJournal(item);
+        setIsModalVisible(true);
+      }}
+      style={styles.historyItem}
+    >
       <Text style={styles.historyTitle}>{item.title}</Text>
       <Text style={styles.historyMood}>Mood: {item.explicitEmotion}</Text>
       <Text style={styles.historyContent}>
         {item.content.length > 50 ? item.content.slice(0, 50) + '...' : item.content}
       </Text>
       <Text style={styles.historyDate}>{item.date} at {item.time}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -164,11 +166,7 @@ const journals = () => {
       </View>
 
       {activeTab === 'New Journal' ? (
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
-          style={{ flex: 1 }}
-        >
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" style={{ flex: 1 }}>
           <View style={styles.newJournalContainer}>
             <Text style={styles.sectionTitle}>New Journal Entry</Text>
             <Text style={styles.privacyText}>Private</Text>
@@ -200,9 +198,7 @@ const journals = () => {
             />
             <View style={styles.shareContainer}>
               <TouchableOpacity onPress={() => setShareWithCounselor(!shareWithCounselor)}>
-                <View style={styles.checkbox}>
-                  {shareWithCounselor && <View style={styles.checkboxInner} />}
-                </View>
+                <View style={styles.checkbox}>{shareWithCounselor && <View style={styles.checkboxInner} />}</View>
               </TouchableOpacity>
               <Text style={styles.shareText}>Share this with my counselor</Text>
             </View>
@@ -227,15 +223,42 @@ const journals = () => {
           style={{ flex: 1 }}
         />
       )}
+
+      {/* MODAL FOR JOURNAL DETAIL */}
+      {selectedJournal && (
+        <Modal
+          visible={isModalVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setIsModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+                <Text style={styles.modalCancel}>Close</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>{selectedJournal.title}</Text>
+              <View style={{ width: 60 }} />
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <Text style={styles.modalLabel}>Mood:</Text>
+              <Text style={styles.modalValue}>{selectedJournal.explicitEmotion}</Text>
+              <Text style={styles.modalLabel}>Journal:</Text>
+              <Text style={styles.modalValue}>{selectedJournal.content}</Text>
+              <Text style={styles.modalLabel}>Date:</Text>
+              <Text style={styles.modalValue}>{selectedJournal.date} at {selectedJournal.time}</Text>
+              {/* <Text style={styles.modalLabel}>Shared with counselor:</Text>
+              <Text style={styles.modalValue}>{selectedJournal.shareStatus ? 'Yes ✅' : 'No ❌'}</Text> */}
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#E3F2FD',
-  },
+  container: { flex: 1, backgroundColor: '#E3F2FD' },
   header: {
     marginTop: 37,
     flexDirection: 'row',
@@ -244,11 +267,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     elevation: 2,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 10,
-  },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 10 },
   tabContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -262,13 +281,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#E3F2FD',
   },
-  activeTab: {
-    backgroundColor: '#007AFF',
-  },
-  tabText: {
-    color: '#000',
-    fontWeight: 'bold',
-  },
+  activeTab: { backgroundColor: '#007AFF' },
+  tabText: { color: '#000', fontWeight: 'bold' },
   newJournalContainer: {
     padding: 20,
     backgroundColor: '#fff',
@@ -277,130 +291,43 @@ const styles = StyleSheet.create({
     elevation: 2,
     height: 635,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#003087',
-  },
-  privacyText: {
-    fontSize: 12,
-    color: '#666',
-    alignSelf: 'flex-end',
-    marginBottom: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 20,
-    fontSize: 16,
-  },
-  thoughtsInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 5,
-    color: '#003087',
-  },
-  moodSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  moodOption: {
-    alignItems: 'center',
-    padding: 5,
-  },
-  selectedMood: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-  },
-  moodEmoji: {
-    fontSize: 24,
-  },
-  shareContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#003087' },
+  privacyText: { fontSize: 12, color: '#666', alignSelf: 'flex-end', marginBottom: 10 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 5, padding: 10, marginBottom: 20, fontSize: 16 },
+  thoughtsInput: { height: 100, textAlignVertical: 'top' },
+  label: { fontSize: 16, marginBottom: 5, color: '#003087' },
+  moodSelector: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  moodOption: { alignItems: 'center', padding: 5 },
+  selectedMood: { backgroundColor: '#007AFF', borderRadius: 10 },
+  moodEmoji: { fontSize: 24 },
+  shareContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
+    width: 20, height: 20, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, justifyContent: 'center', alignItems: 'center', marginRight: 10,
   },
-  checkboxInner: {
-    width: 12,
-    height: 12,
-    backgroundColor: '#007AFF',
-    borderRadius: 2,
+  checkboxInner: { width: 12, height: 12, backgroundColor: '#007AFF', borderRadius: 2 },
+  shareText: { fontSize: 14, color: '#003087' },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
+  cancelButton: { backgroundColor: '#ccc', padding: 10, borderRadius: 5, flex: 1, marginRight: 10 },
+  saveButton: { backgroundColor: '#007AFF', padding: 10, borderRadius: 5, flex: 1 },
+  buttonText: { color: '#fff', textAlign: 'center', fontWeight: 'bold' },
+  historyList: { marginBottom: 70, padding: 10 },
+  historyItem: { backgroundColor: '#fff', padding: 15, marginBottom: 10, borderRadius: 10, elevation: 1 },
+  historyTitle: { fontSize: 16, fontWeight: 'bold', color: '#003087' },
+  historyMood: { fontSize: 14, color: '#666', marginTop: 5 },
+  historyContent: { fontSize: 14, color: '#333', marginTop: 5 },
+  historyDate: { fontSize: 12, color: '#666', marginTop: 5 },
+  // MODAL STYLES
+  modalContainer: { flex: 1, backgroundColor: '#fff' },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 20, borderBottomWidth: 1, borderBottomColor: '#E0E0E0',
+    marginTop: Platform.OS === 'ios' ? 20 : 0,
   },
-  shareText: {
-    fontSize: 14,
-    color: '#003087',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  cancelButton: {
-    backgroundColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    marginRight: 10,
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-  },
-  buttonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  historyList: {
-    marginBottom: 70,
-    padding: 10,
-  },
-  historyItem: {
-    backgroundColor: '#fff',
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 10,
-    elevation: 1,
-  },
-  historyTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#003087',
-  },
-  historyMood: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  historyContent: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 5,
-  },
-  historyDate: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-  },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#003087' },
+  modalCancel: { fontSize: 16, color: '#007AFF', fontWeight: '600' },
+  modalContent: { flex: 1, padding: 20 },
+  modalLabel: { fontSize: 18, fontWeight: 'bold', marginTop: 20, color: '#003087' },
+  modalValue: { fontSize: 16, color: '#555', marginTop: 4,fontWeight:'bold' },
 });
 
 export default journals;

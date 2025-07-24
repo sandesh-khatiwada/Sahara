@@ -7,6 +7,11 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ActivityIndicator, // Make sure to import ActivityIndicator if you use loading state
+  ScrollView, // Import ScrollView
+  KeyboardAvoidingView, // Import KeyboardAvoidingView
+  Platform, // Import Platform to check OS
+  StatusBar // Import StatusBar to manage status bar height
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -19,7 +24,11 @@ const ChangePassword = () => {
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+
+  // Separate states for toggling password visibility independently
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
   const validatePassword = (password) => {
@@ -79,89 +88,117 @@ const ChangePassword = () => {
     }
   };
 
+  // Adjust keyboardVerticalOffset carefully.
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? 0 : 0; // Start with 0
+
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={require('../../assets/image/Therapist_client.png')}
-        style={styles.headerImage}
-      />
-      <View style={styles.formWrapper}>
-        <Text style={styles.title}>Change Password</Text>
-        <Text style={styles.subtitle}>The OTP will be sent to your email.</Text>
+    <KeyboardAvoidingView
+      style={styles.avoidingView}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardVerticalOffset}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollViewContent}
+        keyboardShouldPersistTaps="handled" // Keep the keyboard open when tapping outside an input
+        showsVerticalScrollIndicator={false} // Hide the scroll indicator
+      >
+        <View style={styles.container}>
+          <ImageBackground
+            source={require('../../assets/image/Therapist_client.png')}
+            style={styles.headerImage}
+          />
 
-        <InputWithIcon
-          label="Email"
-          iconName="email"
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!loading}
-        />
-        <InputWithIcon
-          label="New Password"
-          iconName="lock-outline"
-          placeholder="New Password"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry={!showPassword}
-          showPassword={showPassword}
-          togglePassword={() => setShowPassword(!showPassword)}
-          editable={!loading}
-        />
-        <InputWithIcon
-          label="Confirm Password"
-          iconName="lock-outline"
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry={!showPassword}
-          showPassword={showPassword}
-          togglePassword={() => setShowPassword(!showPassword)}
-          editable={!loading}
-        />
+          {/* This is the form wrapper that now also holds the title/subtitle */}
+          <View style={styles.formWrapper}>
+            {/* The title and subtitle are now inside this container */}
+            <Text style={styles.title}>Change Password</Text>
+            <Text style={styles.subtitle}>The OTP will be sent to your email.</Text>
 
-        <TouchableOpacity
-          style={[styles.saveButton, loading && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={loading}
-        >
-          <Text style={styles.saveButtonText}>
-            {loading ? 'Saving...' : 'Save Changes'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+            <InputWithIcon
+              label="Email"
+              iconName="email"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!loading}
+            />
+
+            <InputWithIcon
+              label="New Password"
+              iconName="lock-outline"
+              placeholder="New Password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry={!showNewPassword}
+              showPassword={showNewPassword}
+              togglePassword={() => setShowNewPassword(prev => !prev)}
+              editable={!loading}
+            />
+
+            <InputWithIcon
+              label="Confirm Password"
+              iconName="lock-outline"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              showPassword={showConfirmPassword}
+              togglePassword={() => setShowConfirmPassword(prev => !prev)}
+              editable={!loading}
+            />
+
+            <TouchableOpacity
+              style={[styles.saveButton, loading && styles.disabledButton]}
+              onPress={handleSave}
+              disabled={loading}
+            >
+              <Text style={styles.saveButtonText}>
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  avoidingView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1, // Allows content to expand to fill available space
+  },
+  container: {
+    flex: 1, // Container fills the scroll view
     backgroundColor: '#E3F2FD',
   },
   headerImage: {
     width: '100%',
-    height: height * 0.3,
+    height: height * 0.3, // Fixed height for the image
   },
   formWrapper: {
-    flex: 1,
+    flex: 1, // Allows the form wrapper to take remaining space and expand
     backgroundColor: '#E3F2FD',
     paddingHorizontal: 20,
-    paddingTop: 40,
-    marginTop: -10,
+    // Key adjustment: Negative margin to pull it up over the image
+    marginTop: -80, // Adjust this value to control the overlap
+    paddingTop: 40, // Padding at the top of the form fields
+    paddingBottom: 20, // Add padding at the bottom for scrollability
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    // Removed justifyContent: 'center' as it can conflict with scrolling
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 10,
-    marginTop: -200,
+    // Removed marginTop: -200; its position is now relative to formWrapper's paddingTop
   },
   subtitle: {
     fontSize: 16,

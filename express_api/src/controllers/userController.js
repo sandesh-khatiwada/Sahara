@@ -163,27 +163,53 @@ export const getJournals = async (req, res) => {
 };
 
 // Get user's mood history
+// Get user's mood history for last 7 days
 export const getMoodHistory = async (req, res) => {
   try {
-    // Get last 7 journal entries for the user, sorted by date (oldest first)
-    const moodHistory = await JournalEntry.find({ user: req.user._id })
-      .select('explicitEmotion createdAt')
-      .sort({ createdAt: -1 })  // Sort by date ascending (oldest first)
-      .limit(7);
+    // Calculate date range for last 7 days
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6); // Include today + previous 6 days
 
-    // Transform the data to include day and mood
-    const formattedHistory = moodHistory.map(entry => {
+    // Set time to start of day for sevenDaysAgo
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    // Get journal entries within date range, sorted by date descending
+    const moodHistory = await JournalEntry.find({
+      user: req.user._id,
+      createdAt: { $gte: sevenDaysAgo }
+    })
+      .select('explicitEmotion createdAt')
+      .sort({ createdAt: -1 });
+
+    // Group entries by date and keep only the most recent per day
+    const entriesByDate = {};
+    moodHistory.forEach(entry => {
       const date = new Date(entry.createdAt);
-      // Get day abbreviation (Sun, Mon, Tue, etc.)
-      const dayAbbr = date.toLocaleDateString('en-US', { weekday: 'short' });
-      return {
-        day: dayAbbr,
-        mood: entry.explicitEmotion
-      };
+      // Format date as YYYY-MM-DD for grouping
+      const dateKey = date.toISOString().split('T')[0];
+      
+      // Keep only the most recent entry for each date
+      if (!entriesByDate[dateKey] || entry.createdAt > entriesByDate[dateKey].createdAt) {
+        entriesByDate[dateKey] = entry;
+      }
     });
 
+    // Transform data to include day and mood
+    const formattedHistory = Object.values(entriesByDate)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // Sort by date ascending
+      .map(entry => {
+        const date = new Date(entry.createdAt);
+        // Get day abbreviation (Sun, Mon, Tue, etc.)
+        const dayAbbr = date.toLocaleDateString('en-US', { weekday: 'short' });
+        return {
+          day: dayAbbr,
+          mood: entry.explicitEmotion
+        };
+      });
+
     // Calculate feltBetterCount
-    const feltBetterCount = moodHistory.filter(entry => {
+    const feltBetterCount = Object.values(entriesByDate).filter(entry => {
       const mood = entry.explicitEmotion.toLowerCase();
       return mood === 'good' || mood === 'great';
     }).length;

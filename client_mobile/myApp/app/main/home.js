@@ -113,35 +113,42 @@ const MoodBar = ({ mood }) => {
 };
 
 const MoodChart = ({ history }) => {
+  const today = new Date('2025-07-24T17:30:00+05:45'); // Current date: Thursday, July 24, 2025
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // Generate the past 7 days in reverse chronological order
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    return {
+      date: `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`,
+      day: days[date.getDay()],
+    };
+  }).reverse(); // [Fri, Sat, Sun, Mon, Tue, Wed, Thu]
+
+  // Map mood history to the past 7 days
   const dayMoodMap = {};
-  days.forEach(day => (dayMoodMap[day] = []));
+  last7Days.forEach(({ day }) => (dayMoodMap[day] = null)); // Initialize with null
   history.forEach(entry => {
-    if (dayMoodMap[entry.day]) {
-      dayMoodMap[entry.day].push(entry.mood);
+    if (dayMoodMap.hasOwnProperty(entry.day) && moodLevels.hasOwnProperty(entry.mood)) {
+      dayMoodMap[entry.day] = entry.mood;
     }
   });
 
-  const moodsForDays = days.map(day => {
-    const moods = dayMoodMap[day];
-    const avgMood =
-      moods.length > 0
-        ? moods.reduce((acc, mood) => acc + Object.keys(moodLevels).indexOf(mood), 0) / moods.length
-        : null;
-    return avgMood != null ? Object.keys(moodLevels)[Math.round(avgMood)] : null;
-  });
+  console.log('Last 7 Days:', last7Days);
+  console.log('Day Mood Map:', dayMoodMap);
 
   return (
     <View>
-      <View style={[styles.moodChartContainer, { height: 140}]}>
-        {moodsForDays.map((mood, index) => (
-          <View key={days[index]} style={{ flex: 1, alignItems: 'center' }}>
-            {mood ? <MoodBar mood={mood} /> : <View style={{ height: 140 }} />}
+      <View style={[styles.moodChartContainer, { height: 140 }]}>
+        {last7Days.map(({ day }, index) => (
+          <View key={day + index} style={{ flex: 1, alignItems: 'center' }}>
+            {dayMoodMap[day] ? <MoodBar mood={dayMoodMap[day]} /> : <View style={{ height: 140 }} />}
           </View>
         ))}
       </View>
       <View style={styles.daysLabelContainer}>
-        {days.map(day => (
+        {last7Days.map(({ day }) => (
           <Text key={day} style={styles.dayLabel}>
             {day}
           </Text>
@@ -174,7 +181,7 @@ const SleepBar = ({ hours, quality }) => {
 
 const SleepChart = ({ history }) => {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const today = new Date('2025-07-23T17:34:00+05:45');
+  const today = new Date('2025-07-24T17:30:00+05:45');
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
@@ -543,7 +550,7 @@ export default function HomeScreen() {
         <View style={[styles.moodBox, { marginTop: 20 }]}>
           <Text style={styles.sectionTitle}>Mood History</Text>
           <Text style={{ color: '#666', marginBottom: 10 }}>
-            You felt better {moodHistory.length} times this week.
+            Your mood history from the past 7 days journal
           </Text>
           <MoodChart history={moodHistory} />
           <TouchableOpacity style={styles.saveMoodButton}>

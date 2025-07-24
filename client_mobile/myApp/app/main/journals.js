@@ -104,12 +104,8 @@ const journals = () => {
       const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.message || 'Failed to save journal entry');
 
-      const predictions = responseData.data.emotionalTone.predictions;
-      const emotionText = predictions
-        .map((pred) => `• ${pred.emotion} (${(pred.confidence * 100).toFixed(1)}%)`)
-        .join('\n');
-
-      Alert.alert('Journal Saved Successfully!', `Detected Emotions:\n${emotionText}`);
+      const predictedEmotion = responseData.data.predictedEmotion;
+      Alert.alert('Journal Saved Successfully!', `Emotion Detected : ${predictedEmotion}`);
 
       setTitle('');
       setMood(null);
@@ -247,8 +243,6 @@ const journals = () => {
               <Text style={styles.modalValue}>{selectedJournal.content}</Text>
               <Text style={styles.modalLabel}>Date:</Text>
               <Text style={styles.modalValue}>{selectedJournal.date} at {selectedJournal.time}</Text>
-              {/* <Text style={styles.modalLabel}>Shared with counselor:</Text>
-              <Text style={styles.modalValue}>{selectedJournal.shareStatus ? 'Yes ✅' : 'No ❌'}</Text> */}
             </ScrollView>
           </View>
         </Modal>
@@ -327,7 +321,7 @@ const styles = StyleSheet.create({
   modalCancel: { fontSize: 16, color: '#007AFF', fontWeight: '600' },
   modalContent: { flex: 1, padding: 20 },
   modalLabel: { fontSize: 18, fontWeight: 'bold', marginTop: 20, color: '#003087' },
-  modalValue: { fontSize: 16, color: '#555', marginTop: 4,fontWeight:'bold' },
+  modalValue: { fontSize: 16, color: '#555', marginTop: 4, fontWeight: 'bold' },
 });
 
 export default journals;

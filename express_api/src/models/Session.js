@@ -51,6 +51,9 @@ const sessionSchema = new mongoose.Schema({
   userJoinStatus:{
     type:Boolean,
     default:false,
+  },
+  reportShareStatus:{
+    type:Boolean
   }
 }, { timestamps: true });  
 

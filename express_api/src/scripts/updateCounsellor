@@ -1,72 +1,32 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Counsellor from '../models/Counsellor.js';
+import Session from '../models/Session.js'; // Adjust path as needed
 
 // Load environment variables
 dotenv.config();
 
 // Connect to MongoDB
-mongoose.connect('mongodb+srv://khatiwadasandesh01:aHMQIqc3X9b1LVYW@cluster0.xwcq4o0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://khatiwadasandesh01:aHMQIqc3X9b1LVYW@cluster0.xwcq4o0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
   .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
 
-// Function to update counsellor data
-const updateCounsellorData = async () => {
+// Update script
+const updateReportShareStatus = async () => {
   try {
-    // Array of counsellor updates with email, nmcNo, and qualification
-    const counsellorUpdates = [
-                    {
-        email: 'anisha@gmail.com',
-        nmcNo: '5676',
-        qualification: 'MD in Psychiatry',
-        designation: 'Psychiastrist'
-      },
+    const result = await Session.updateMany(
+      { reportShareStatus: { $exists: false } }, // Only update if field is missing
+      { $set: { reportShareStatus: true } }
+    );
 
-        {
-        email: ' binod@gmail.com',
-        nmcNo: '56756',
-        qualification: 'MD in Psychiatry',
-        designation: 'Psychiastrist'
-      },
-
-
-     
-
-
-      
-
-      
-      
-    ];
-
-    // Update each counsellor
-    for (const update of counsellorUpdates) {
-      const counsellor = await Counsellor.findOneAndUpdate(
-        { email: update.email },
-        {
-          $set: {
-            nmcNo: update.nmcNo,
-            qualification: update.qualification,
-            designation: update.designation
-          }
-        },
-        { new: true }
-      );
-
-      if (counsellor) {
-        console.log(`Updated counsellor: ${update.email}`);
-      } else {
-        console.log(`Counsellor not found: ${update.email}`);
-      }
-    }
-
-    console.log('All counsellor updates completed!');
+    console.log(`Updated ${result.modifiedCount} sessions with reportShareStatus: true`);
     process.exit(0);
   } catch (error) {
-    console.error('Error updating counsellor data:', error);
+    console.error('Error updating sessions:', error);
     process.exit(1);
   }
 };
 
-// Run the script
-updateCounsellorData();
+updateReportShareStatus();

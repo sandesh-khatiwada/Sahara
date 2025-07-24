@@ -574,6 +574,13 @@ export const getPdfReport = async (req, res) => {
       });
     }
 
+    if(session.reportShareStatus == false){
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: User has not provided consent to access report',
+      });
+    }
+
     const user = session.user;
     if (!user) {
       return res.status(404).json({

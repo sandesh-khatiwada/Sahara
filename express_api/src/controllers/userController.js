@@ -716,9 +716,13 @@ export const getCounsellorByEmail = async (req, res) => {
 
 export const bookCounsellorSession = async (req, res) => {
   try {
-    const { counsellorEmail, day, time, noteTitle, noteDescription } = req.body;
+    const { counsellorEmail, day, time, noteTitle, noteDescription, shareStatus } = req.body;
     if (!counsellorEmail || !day || !time || !noteTitle || !noteDescription) {
       return res.status(400).json({ success: false, message: 'counsellorEmail, day, and time and notes for counsellor are required.' });
+    }
+
+    if(shareStatus==""){
+            return res.status(400).json({ success: false, message: 'Report sharing status is required.' });
     }
     // Find counsellor
     const counsellor = await Counsellor.findOne({ email: counsellorEmail, isActive: true });
@@ -782,6 +786,7 @@ export const bookCounsellorSession = async (req, res) => {
     if (existingSession) {
       return res.status(400).json({ success: false, message: 'Counsellor is already booked for the requested day and time' });
     }
+
     // Create new session
     const session = await Session.create({
       user: req.user._id,
@@ -790,6 +795,7 @@ export const bookCounsellorSession = async (req, res) => {
       noteTitle: noteTitle,
       noteDescription: noteDescription,
       status: 'pending',
+      reportShareStatus : shareStatus,
       paymentStatus: 'pending'
     });
     res.status(201).json({ success: true, message: 'Booking request created successfully', data: session });

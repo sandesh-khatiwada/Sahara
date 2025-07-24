@@ -11,6 +11,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Switch, // Added for checkbox functionality
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -50,10 +51,10 @@ const getNextSevenDays = () => {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     return {
-      id: date.toISOString().split("T")[0], // e.g., "2025-07-22"
-      name: date.toLocaleDateString("en-US", { weekday: "short" }), // e.g., "Tue"
-      date: date.getDate(), // e.g., 22
-      fullName: date.toLocaleDateString("en-US", { weekday: "long" }), // e.g., "Tuesday"
+      id: date.toISOString().split("T")[0],
+      name: date.toLocaleDateString("en-US", { weekday: "short" }),
+      date: date.getDate(),
+      fullName: date.toLocaleDateString("en-US", { weekday: "long" }),
     };
   });
 };
@@ -67,7 +68,7 @@ const mapTimeToShift = (time) => {
   if (hour >= 12 && hour < 15) return "afternoon";
   if (hour >= 15 && hour < 18) return "evening";
   if (hour >= 18 && hour <= 21) return "night";
-  return null; // Invalid or out-of-range time
+  return null;
 };
 
 // DayCard component to display available days
@@ -158,12 +159,13 @@ const DoctorProfile = () => {
   const [counsellor, setCounsellor] = useState(null);
   const [availability, setAvailability] = useState({});
   const [selectedDay, setSelectedDay] = useState(null);
-  const [selectedSlot, setSelectedSlot] = useState(null); // { dayId, slotId }
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteDescription, setNoteDescription] = useState("");
+  const [shareStatus, setShareStatus] = useState(false); // Added for checkbox
 
   const fetchCounsellor = async () => {
     try {
@@ -196,7 +198,6 @@ const DoctorProfile = () => {
 
       if (json.success) {
         setCounsellor(json.data);
-        // Initialize availability from API response
         const backendAvailability = json.data.availability || [];
         const newAvailability = {};
 
@@ -223,7 +224,7 @@ const DoctorProfile = () => {
                     time: slot.time,
                     hour: slot.hour,
                     period: shiftId,
-                    start: slot.start, // Ensure start is included
+                    start: slot.start,
                   });
                 } else {
                   console.log(
@@ -306,7 +307,6 @@ const DoctorProfile = () => {
       )?.fullName;
       const time = selectedSlotConfig?.start;
 
-      // Validate all required fields
       if (!counsellor?.email || !dayFullName || !time || !selectedSlotConfig) {
         Alert.alert("Error", "Missing or invalid booking information.");
         console.log("Missing/invalid data:", {
@@ -328,6 +328,7 @@ const DoctorProfile = () => {
         time,
         noteTitle,
         noteDescription,
+        shareStatus, // Added to request body
       };
 
       const url = `${API_BASE_URL}/api/users/counsellor-booking`;
@@ -358,6 +359,7 @@ const DoctorProfile = () => {
         setIsModalVisible(false);
         setNoteTitle("");
         setNoteDescription("");
+        setShareStatus(false); // Reset checkbox
         setSelectedSlot(null);
         setSelectedDay(null);
       } else {
@@ -379,6 +381,7 @@ const DoctorProfile = () => {
     setIsModalVisible(false);
     setNoteTitle("");
     setNoteDescription("");
+    setShareStatus(false); // Reset checkbox
   };
 
   const getActiveDaysCount = () => {
@@ -396,7 +399,7 @@ const DoctorProfile = () => {
     chargePerHour: 1000,
     bio: "Experienced counsellor specializing in mental health support.",
     profilePhoto: { filename: "doctor1.png" },
-    averageRating: 4.6, // Added for fallback display
+    averageRating: 4.6,
   };
 
   return (
@@ -405,7 +408,6 @@ const DoctorProfile = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -425,7 +427,6 @@ const DoctorProfile = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Loading/Error States */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <Text>Loading counsellor...</Text>
@@ -523,7 +524,6 @@ const DoctorProfile = () => {
           </View>
         ) : counsellor ? (
           <>
-            {/* Profile Image */}
             <View style={styles.profileSection}>
               <Image
                 source={{
@@ -535,7 +535,6 @@ const DoctorProfile = () => {
               />
             </View>
 
-            {/* Counsellor Details */}
             <View style={styles.detailsSection}>
               <View style={styles.detailCard}>
                 <MaterialCommunityIcons
@@ -563,7 +562,7 @@ const DoctorProfile = () => {
                   </Text>
                 </View>
               </View>
-               <View style={styles.detailCard}>
+              <View style={styles.detailCard}>
                 <MaterialCommunityIcons
                   name="school"
                   size={20}
@@ -619,7 +618,6 @@ const DoctorProfile = () => {
                   </Text>
                 </View>
               </View>
-             
               {counsellor.bio && (
                 <View style={styles.detailCard}>
                   <MaterialCommunityIcons
@@ -636,14 +634,12 @@ const DoctorProfile = () => {
               )}
             </View>
 
-            {/* Availability Section */}
             <View style={styles.availabilitySection}>
               <Text style={styles.sectionTitle}>Book Appointment</Text>
               <Text style={styles.sectionSubtitle}>
                 Select a date and time slot to book an appointment
               </Text>
 
-              {/* Stats */}
               <View style={styles.statsContainer}>
                 <View style={styles.statCard}>
                   <MaterialCommunityIcons
@@ -678,7 +674,6 @@ const DoctorProfile = () => {
                 </View>
               </View>
 
-              {/* Days List */}
               <View style={styles.daysContainer}>
                 <Text style={styles.daysTitle}>Available Days:</Text>
                 <View style={styles.daysGrid}>
@@ -698,7 +693,6 @@ const DoctorProfile = () => {
                 </View>
               </View>
 
-              {/* Info Card */}
               <View style={styles.infoCard}>
                 <View style={styles.infoIcon}>
                   <MaterialCommunityIcons
@@ -718,7 +712,6 @@ const DoctorProfile = () => {
                 </View>
               </View>
 
-              {/* Book Button */}
               {selectedSlot && (
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
@@ -735,7 +728,6 @@ const DoctorProfile = () => {
                 </View>
               )}
 
-              {/* Booking Form Modal */}
               <Modal
                 animationType="slide"
                 transparent={true}
@@ -762,6 +754,17 @@ const DoctorProfile = () => {
                       multiline
                       numberOfLines={5}
                     />
+                    <View style={styles.checkboxContainer}>
+                      <Switch
+                        value={shareStatus}
+                        onValueChange={setShareStatus}
+                        trackColor={{ false: "#767577", true: "#007AFF" }}
+                        thumbColor={shareStatus ? "#fff" : "#f4f3f4"}
+                      />
+                      <Text style={styles.checkboxLabel}>
+                        Share Sleeplogs and Emotion Insights report. 
+                      </Text>
+                    </View>
                     <View style={styles.modalButtonContainer}>
                       <TouchableOpacity
                         style={[styles.modalButton, styles.cancelButton]}
@@ -769,6 +772,7 @@ const DoctorProfile = () => {
                           setIsModalVisible(false);
                           setNoteTitle("");
                           setNoteDescription("");
+                          setShareStatus(false); // Reset checkbox
                         }}
                       >
                         <Text style={styles.modalButtonText}>Cancel</Text>
@@ -1166,6 +1170,16 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.1)",
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: "#333",
+    marginLeft: 10,
   },
   modalButtonContainer: {
     flexDirection: "row",

@@ -20,7 +20,6 @@ import { Audio } from 'expo-av';
 import { API_BASE_URL } from '@env';
 import { WebView } from 'react-native-webview';
 
-
 // Star component for rating UI
 const Star = ({ filled, onPress }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
@@ -180,6 +179,7 @@ const Session = () => {
           status: 'completed',
           feedback: appt.feedback || null,
           rating: appt.rating || null,
+          profilePhoto: appt.counsellor.profilePhoto?.filename || 'default.jpg',
         })),
       };
 
@@ -191,11 +191,14 @@ const Session = () => {
           time: appt.time,
           status: appt.status === 'accepted' ? 'confirmed' : appt.status,
           paymentPending: appt.paymentStatus === 'pending',
-          chargePerHour: appt.counsellor.chargePerHour, // Assume API returns this
+          chargePerHour: appt.counsellor.chargePerHour,
+          profilePhoto: appt.counsellor.profilePhoto?.filename || 'default.jpg',
         };
         const now = new Date();
         const timeDiff = Math.abs(new Date(appt.dateTime) - now) / 1000 / 60;
-        if (timeDiff <= 3000000000 && appt.status === 'accepted' && appt.paymentStatus==='completed') appointment.status = 'happeningNow';
+        if (timeDiff <= 3000000000 && appt.status === 'accepted' && appt.paymentStatus === 'completed') {
+          appointment.status = 'happeningNow';
+        }
 
         mappedAppointments.upcoming.push(appointment);
       });
@@ -206,6 +209,7 @@ const Session = () => {
         date: appt.date,
         time: appt.time,
         status: 'pending',
+        profilePhoto: appt.counsellor.profilePhoto?.filename || 'default.jpg',
       }));
 
       mappedAppointments.upcoming.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -326,7 +330,7 @@ const Session = () => {
         <View style={styles.rowLeft}>
           <Image
             source={{
-              uri: `${API_BASE_URL}/Uploads/profile_photos/7d433dac-6611-4eef-a29a-53d66805ad51.jpg`,
+              uri: `${API_BASE_URL}/Uploads/profile_photos/${app.profilePhoto}`,
             }}
             style={styles.avatar}
           />
@@ -372,7 +376,7 @@ const Session = () => {
         <View style={styles.rowLeft}>
           <Image
             source={{
-              uri: `${API_BASE_URL}/Uploads/profile_photos/7d433dac-6611-4eef-a29a-53d66805ad51.jpg`,
+              uri: `${API_BASE_URL}/Uploads/profile_photos/${app.profilePhoto}`,
             }}
             style={styles.avatar}
           />
@@ -393,7 +397,7 @@ const Session = () => {
         <View style={styles.rowLeft}>
           <Image
             source={{
-              uri: `${API_BASE_URL}/Uploads/profile_photos/7d433dac-6611-4eef-a29a-53d66805ad51.jpg`,
+              uri: `${API_BASE_URL}/Uploads/profile_photos/${app.profilePhoto}`,
             }}
             style={styles.avatar}
           />

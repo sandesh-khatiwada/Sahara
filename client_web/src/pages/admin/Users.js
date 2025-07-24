@@ -229,9 +229,7 @@ const Users = () => {
             <Typography variant="h6" sx={{ color: '#475569', mb: 1 }}>
               Manage and view all registered users
             </Typography>
-            <Typography variant="body1" sx={{ color: '#64748b' }}>
-              Total: {users.length} registered users
-            </Typography>
+           
           </Box>
         </Box>
       </motion.div>

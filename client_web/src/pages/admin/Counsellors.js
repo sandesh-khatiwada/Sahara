@@ -212,9 +212,7 @@ const Counsellors = () => {
             <Typography variant="h6" sx={{ color: '#475569' }}>
               Manage and view all registered counsellors
             </Typography>
-            <Typography variant="body1" sx={{ color: '#64748b' }}>
-              Total: {counsellors.length} verified professionals
-            </Typography>
+           
           </Box>
         </Box>
       </motion.div>

@@ -721,9 +721,6 @@ export const bookCounsellorSession = async (req, res) => {
       return res.status(400).json({ success: false, message: 'counsellorEmail, day, and time and notes for counsellor are required.' });
     }
 
-    if(shareStatus==""){
-            return res.status(400).json({ success: false, message: 'Report sharing status is required.' });
-    }
     // Find counsellor
     const counsellor = await Counsellor.findOne({ email: counsellorEmail, isActive: true });
     if (!counsellor) {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { addAvailability, getBookingRequests, getSessions, acceptBookingRequest, declineBookingRequest, getCounsellorProfile, editCounsellorProfile, getCounsellorAvailability , getSessionHistory, getTotalStatistics } from '../controllers/counsellorController.js';
+import { addAvailability, getBookingRequests, getSessions, acceptBookingRequest, declineBookingRequest, getCounsellorProfile, editCounsellorProfile, getCounsellorAvailability , getSessionHistory, getTotalStatistics, getPdfReport } from '../controllers/counsellorController.js';
 import { verifyTokenCounsellor } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -28,6 +28,8 @@ router.patch("/profile-info",verifyTokenCounsellor,editCounsellorProfile);
 router.get("/availability",verifyTokenCounsellor, getCounsellorAvailability);
 
 router.get("/session-history", verifyTokenCounsellor, getSessionHistory);
+
+router.post("/session/pdf-report",verifyTokenCounsellor, getPdfReport)
 
 
 export default router; 

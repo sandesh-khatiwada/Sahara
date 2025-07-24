@@ -34,7 +34,7 @@ import {
   Stars as StarsIcon,
   Error as ErrorIcon,
   Public as PublicIcon,
-  StarRate as StarRateIcon
+  PersonAdd as ProfessionalsIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -140,27 +140,6 @@ const StatCard = ({ title, value, icon, color, trend, loading, delay = 0, subtit
                 {subtitle}
               </Typography>
             )}
-            {trend !== 0 && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: (delay * 0.1) + 0.5 }}
-              >
-                <Chip
-                  icon={trend > 0 ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
-                  label={`${trend > 0 ? '+' : ''}${trend}%`}
-                  size="small"
-                  sx={{
-                    mt: 1,
-                    bgcolor: trend > 0 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
-                    color: trend > 0 ? '#4caf50' : '#f44336',
-                    fontSize: '0.7rem',
-                    height: '24px',
-                    border: `1px solid ${trend > 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}`
-                  }}
-                />
-              </motion.div>
-            )}
           </Box>
           <motion.div
             initial={{ rotate: -180, opacity: 0 }}
@@ -256,24 +235,27 @@ const Home = () => {
     totalUsers: 0,
     totalCounsellors: 0
   });
+  const [sessionData, setSessionData] = useState([
+    { name: 'Active Sessions', value: 0, color: '#10b981' },
+    { name: 'Completed Sessions', value: 0, color: '#3b82f6' },
+    { name: 'Cancelled Sessions', value: 0, color: '#ef4444' },
+    { name: 'Pending Sessions', value: 0, color: '#f59e0b' }
+  ]);
+  const [platformImpact, setPlatformImpact] = useState({
+    livesImpacted: 0,
+    sessionsCompleted: 0,
+    countriesServed: 0,
+    professionalsOnboarded: 0
+  });
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Data based on actual backend data with some realistic mock data
+  // Data for user and counsellor growth (past 4 months: April, May, June, July)
   const userGrowthData = [
-    { month: 'Jan', users: Math.floor(stats.totalUsers * 0.2) || 12, counsellors: Math.floor(stats.totalCounsellors * 0.1) || 2 },
-    { month: 'Feb', users: Math.floor(stats.totalUsers * 0.35) || 22, counsellors: Math.floor(stats.totalCounsellors * 0.3) || 3 },
-    { month: 'Mar', users: Math.floor(stats.totalUsers * 0.5) || 35, counsellors: Math.floor(stats.totalCounsellors * 0.5) || 5 },
-    { month: 'Apr', users: Math.floor(stats.totalUsers * 0.7) || 48, counsellors: Math.floor(stats.totalCounsellors * 0.7) || 7 },
-    { month: 'May', users: Math.floor(stats.totalUsers * 0.85) || 58, counsellors: Math.floor(stats.totalCounsellors * 0.85) || 8 },
-    { month: 'Jun', users: stats.totalUsers || 68, counsellors: stats.totalCounsellors || 10 }
-  ];
-
-  const sessionData = [
-    { name: 'Active Sessions', value: Math.floor(stats.totalUsers * 0.1) || 8, color: '#10b981' },
-    { name: 'Completed Sessions', value: Math.floor(stats.totalUsers * 0.3) || 25, color: '#3b82f6' },
-    { name: 'Cancelled Sessions', value: Math.floor(stats.totalUsers * 0.05) || 3, color: '#ef4444' },
-    { name: 'Pending Sessions', value: Math.floor(stats.totalUsers * 0.08) || 6, color: '#f59e0b' }
+    { month: 'Apr', users: Math.floor(stats.totalUsers * 0.4) || 30, counsellors: Math.floor(stats.totalCounsellors * 0.4) || 4 },
+    { month: 'May', users: Math.floor(stats.totalUsers * 0.6) || 45, counsellors: Math.floor(stats.totalCounsellors * 0.6) || 6 },
+    { month: 'Jun', users: Math.floor(stats.totalUsers * 0.85) || 58, counsellors: Math.floor(stats.totalCounsellors * 0.85) || 8 },
+    { month: 'Jul', users: stats.totalUsers || 68, counsellors: stats.totalCounsellors || 10 }
   ];
 
   const activityData = [
@@ -295,15 +277,26 @@ const Home = () => {
       setLoading(true);
       setError('');
 
-      const [usersResponse, counsellorsResponse] = await Promise.all([
+      const token = localStorage.getItem('adminToken');
+      const [usersResponse, counsellorsResponse, sessionResponse, impactResponse] = await Promise.all([
         axios.get('http://localhost:5000/api/admin/total-users', {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('adminToken')}`
+            Authorization: `Bearer ${token}`
           }
         }),
         axios.get('http://localhost:5000/api/admin/total-counsellors', {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('adminToken')}`
+            Authorization: `Bearer ${token}`
+          }
+        }),
+        axios.get('http://localhost:5000/api/admin/session-distribution', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }),
+        axios.get('http://localhost:5000/api/admin/platform-impact', {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
         })
       ]);
@@ -311,6 +304,20 @@ const Home = () => {
       setStats({
         totalUsers: usersResponse.data.data.totalUsers,
         totalCounsellors: counsellorsResponse.data.data.totalCounsellors
+      });
+
+      setSessionData([
+        { name: 'Active Sessions', value: sessionResponse.data.data.active, color: '#10b981' },
+        { name: 'Completed Sessions', value: sessionResponse.data.data.completed, color: '#3b82f6' },
+        { name: 'Cancelled Sessions', value: sessionResponse.data.data.cancelled, color: '#ef4444' },
+        { name: 'Pending Sessions', value: sessionResponse.data.data.pending, color: '#f59e0b' }
+      ]);
+
+      setPlatformImpact({
+        livesImpacted: impactResponse.data.data.livesImpacted,
+        sessionsCompleted: impactResponse.data.data.sessionsCompleted,
+        countriesServed: impactResponse.data.data.countriesServed,
+        professionalsOnboarded: impactResponse.data.data.professionalsOnboarded
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -329,11 +336,9 @@ const Home = () => {
         navigate('/admin/users');
         break;
       case 'Analytics':
-        // Navigate to analytics page when implemented
         console.log('Analytics page not implemented yet');
         break;
       case 'Settings':
-        // Navigate to settings page when implemented
         console.log('Settings page not implemented yet');
         break;
       default:
@@ -473,115 +478,110 @@ const Home = () => {
           </motion.div>
         )}
         
-        {/* Quick Actions Bar */}
+        {/* Quick Actions and Stats Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
         >
-          <Box sx={{ 
-            mb: 4,
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderRadius: 3,
-            p: 3,
-            border: '1px solid rgba(0, 0, 0, 0.05)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <TargetIcon sx={{ color: '#1e293b', fontSize: 24 }} />
-              <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600 }}>
-                Quick Actions
-              </Typography>
-            </Box>
-            <Grid container spacing={2}>
-              {[
-                { label: 'Add Counsellor', icon: <PersonAddIcon />, color: '#10b981' },
-                { label: 'View Users', icon: <PeopleIcon />, color: '#3b82f6' },
-                { label: 'Analytics', icon: <AnalyticsIcon />, color: '#f59e0b' },
-                { label: 'Settings', icon: <SettingsIcon />, color: '#8b5cf6' }
-              ].map((action, index) => (
-                <Grid item xs={6} sm={3} key={index}>
-                  <Box sx={{
-                    p: 2,
-                    background: `${action.color}10`,
-                    borderRadius: 2,
-                    border: `1px solid ${action.color}20`,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      background: `${action.color}20`,
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 8px 25px ${action.color}30`
-                    }
-                  }}
-                  onClick={() => handleQuickAction(action.label)}
-                  >
-                    <Box sx={{ mb: 1, color: action.color }}>
-                      {React.cloneElement(action.icon, { sx: { fontSize: 32 } })}
+          <Grid container spacing={3} sx={{ mb: 4, alignItems: 'flex-start' }}>
+            {/* Quick Actions (Left) */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ 
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 3,
+                p: 3,
+                border: '1px solid rgba(0, 0, 0, 0.05)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+                minHeight: '200px'
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center',  gap: 1, mb: 3 }}>
+                  <TargetIcon sx={{ color: '#1e293b', fontSize: 24 }} />
+                  <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                    Quick Actions
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {[
+                    { label: 'Add Counsellor', icon: <PersonAddIcon />, color: '#10b981' },
+                    { label: 'View Users', icon: <PeopleIcon />, color: '#3b82f6' },
+                  ].map((action, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        p: 2,
+                        background: `${action.color}10`,
+                        borderRadius: 2,
+                        border: `1px solid ${action.color}20`,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          background: `${action.color}20`,
+                          transform: 'translateY(-2px)',
+                          boxShadow: `0 8px 25px ${action.color}30`
+                        },
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}
+                      onClick={() => handleQuickAction(action.label)}
+                    >
+                      <Box sx={{ color: action.color }}>
+                        {React.cloneElement(action.icon, { sx: { fontSize: 28 } })}
+                      </Box>
+                      <Typography variant="body1" sx={{ color: '#475569', fontWeight: 500 }}>
+                        {action.label}
+                      </Typography>
                     </Box>
-                    <Typography variant="body2" sx={{ color: '#475569', fontWeight: 500 }}>
-                      {action.label}
-                    </Typography>
-                  </Box>
-                </Grid>
-              ))}
+                  ))}
+                </Box>
+              </Box>
             </Grid>
-          </Box>
+            
+            {/* Vertical Divider */}
+            <Grid item xs={12} md={1} sx={{ display: { xs: 'none', md: 'block' } }}>
+              <Box
+                sx={{
+                  height: '100%',
+                  width: '1px',
+                  background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05))',
+                  margin: '0 auto'
+                }}
+              />
+            </Grid>
+            
+            {/* Stats Cards (Right) */}
+            <Grid item xs={12} md={7}>
+              <Grid container spacing={3} sx={{ minHeight: '350px' }}>
+                <Grid item xs={12} sm={6}>
+                  <StatCard
+                    title="Total Users"
+                    value={stats.totalUsers}
+                    icon={<GroupIcon sx={{ fontSize: 28 }} />}
+                    color={theme.palette.primary.main}
+                    trend={Math.floor(Math.random() * 15) + 8}
+                    loading={loading}
+                    delay={0}
+                    subtitle="Active platform users"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <StatCard
+                    title="Total Counsellors"
+                    value={stats.totalCounsellors}
+                    icon={<PeopleIcon sx={{ fontSize: 28 }} />}
+                    color={theme.palette.success.main}
+                    trend={Math.floor(Math.random() * 12) + 5}
+                    loading={loading}
+                    delay={1}
+                    subtitle="Verified professionals"
+                  />
+                </Grid>
+              </Grid>
+            </Grid>
+          </Grid>
         </motion.div>
-        
-        {/* Stats Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Total Users"
-              value={stats.totalUsers}
-              icon={<GroupIcon sx={{ fontSize: 28 }} />}
-              color={theme.palette.primary.main}
-              trend={Math.floor(Math.random() * 15) + 8}
-              loading={loading}
-              delay={0}
-              subtitle="Active platform users"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Total Counsellors"
-              value={stats.totalCounsellors}
-              icon={<PeopleIcon sx={{ fontSize: 28 }} />}
-              color={theme.palette.success.main}
-              trend={Math.floor(Math.random() * 12) + 5}
-              loading={loading}
-              delay={1}
-              subtitle="Verified professionals"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Active Sessions"
-              value={Math.floor(stats.totalUsers * 0.1) || 8}
-              icon={<PsychologyIcon sx={{ fontSize: 28 }} />}
-              color={theme.palette.info.main}
-              trend={Math.floor(Math.random() * 20) + 5}
-              loading={loading}
-              delay={2}
-              subtitle="Currently ongoing"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Success Rate"
-              value={`${Math.floor(85 + Math.random() * 10)}%`}
-              icon={<AssessmentIcon sx={{ fontSize: 28 }} />}
-              color={theme.palette.warning.main}
-              trend={Math.floor(Math.random() * 8) + 2}
-              loading={loading}
-              delay={3}
-              subtitle="Session completion"
-            />
-          </Grid>
-        </Grid>
 
         {/* Charts Row */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -674,200 +674,6 @@ const Home = () => {
           </Grid>
         </Grid>
 
-        {/* Activity Chart */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12}>
-            <ChartCard 
-              title={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <TrendingUpIcon sx={{ color: '#1e293b', fontSize: 20 }} />
-                  <span>Daily Activity Pattern</span>
-                </Box>
-              } 
-              height={300} 
-              delay={6}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={activityData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="#64748b"
-                    fontSize={12}
-                    fontWeight={500}
-                  />
-                  <YAxis 
-                    stroke="#64748b"
-                    fontSize={12}
-                    fontWeight={500}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                      border: '1px solid rgba(0, 0, 0, 0.1)', 
-                      borderRadius: '8px',
-                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-                      color: '#1e293b'
-                    }} 
-                  />
-                  <Bar 
-                    dataKey="activity" 
-                    fill={theme.palette.info.main}
-                    radius={[4, 4, 0, 0]}
-                    name="Active Users"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </Grid>
-        </Grid>
-
-        {/* Recent Activity & System Status */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={6}>
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7, duration: 0.6 }}
-            >
-              <MotionPaper
-                elevation={0}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  background: 'rgba(255, 255, 255, 0.95)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(0, 0, 0, 0.05)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-                  height: '400px'
-                }}
-              >
-                <Typography variant="h6" sx={{ color: '#1e293b', mb: 3, fontWeight: 600 }}>
-                  🕒 Recent Activity
-                </Typography>
-                <Box sx={{ maxHeight: '320px', overflow: 'auto' }}>
-                  {[
-                    { time: '2 mins ago', action: 'New user registered', type: 'success' },
-                    { time: '5 mins ago', action: 'Counsellor session completed', type: 'info' },
-                    { time: '12 mins ago', action: 'Payment processed', type: 'success' },
-                    { time: '18 mins ago', action: 'New counsellor application', type: 'warning' },
-                    { time: '25 mins ago', action: 'System backup completed', type: 'info' },
-                    { time: '32 mins ago', action: 'User profile updated', type: 'info' },
-                    { time: '45 mins ago', action: 'Session scheduled', type: 'success' },
-                  ].map((activity, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.8 + index * 0.1 }}
-                    >
-                      <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        p: 2,
-                        mb: 2,
-                        background: 'rgba(248, 250, 252, 0.8)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(0, 0, 0, 0.05)',
-                        '&:hover': {
-                          background: 'rgba(241, 245, 249, 0.9)',
-                        }
-                      }}>
-                        <Box sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          bgcolor: activity.type === 'success' ? '#4CAF50' : 
-                                   activity.type === 'warning' ? '#FF9800' : '#2196F3',
-                          mr: 2
-                        }} />
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 500 }}>
-                            {activity.action}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: '#64748b' }}>
-                            {activity.time}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </motion.div>
-                  ))}
-                </Box>
-              </MotionPaper>
-            </motion.div>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8, duration: 0.6 }}
-            >
-              <MotionPaper
-                elevation={0}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  background: 'rgba(255, 255, 255, 0.95)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(0, 0, 0, 0.05)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-                  height: '400px'
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-                  <FlashOnIcon sx={{ color: '#1e293b', fontSize: 24 }} />
-                  <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600 }}>
-                    System Status
-                  </Typography>
-                </Box>
-                <Box>
-                  {[
-                    { name: 'Server Health', status: 'Excellent', percentage: 98, color: '#4CAF50' },
-                    { name: 'Database Performance', status: 'Good', percentage: 85, color: '#2196F3' },
-                    { name: 'API Response Time', status: 'Optimal', percentage: 92, color: '#4CAF50' },
-                    { name: 'Storage Usage', status: 'Normal', percentage: 67, color: '#FF9800' },
-                    { name: 'Network Latency', status: 'Low', percentage: 95, color: '#4CAF50' },
-                  ].map((system, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.9 + index * 0.1 }}
-                    >
-                      <Box sx={{ mb: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 500 }}>
-                            {system.name}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: system.color }}>
-                            {system.status}
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={system.percentage}
-                          sx={{
-                            height: 8,
-                            borderRadius: 4,
-                            bgcolor: 'rgba(0, 0, 0, 0.05)',
-                            '& .MuiLinearProgress-bar': {
-                              bgcolor: system.color,
-                              borderRadius: 4
-                            }
-                          }}
-                        />
-                        <Typography variant="caption" sx={{ color: '#64748b', mt: 0.5 }}>
-                          {system.percentage}%
-                        </Typography>
-                      </Box>
-                    </motion.div>
-                  ))}
-                </Box>
-              </MotionPaper>
-            </motion.div>
-          </Grid>
-        </Grid>
-
         {/* Footer Stats */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -891,17 +697,17 @@ const Home = () => {
             </Box>
             <Grid container spacing={3}>
               {[
-                { label: 'Lives Impacted', value: `${Math.floor((stats.totalUsers || 68) * 1.5)}+`, icon: <PeopleIcon /> },
-                { label: 'Sessions Completed', value: `${Math.floor((stats.totalUsers || 68) * 0.8)}+`, icon: <AssessmentIcon /> },
-                { label: 'Countries Served', value: '15+', icon: <PublicIcon /> },
-                { label: 'Satisfaction Rate', value: `${Math.floor(88 + Math.random() * 10)}%`, icon: <StarRateIcon /> }
+                { label: 'Lives Impacted', value: platformImpact.livesImpacted.toLocaleString(), icon: <PeopleIcon /> },
+                { label: 'Sessions Completed', value: platformImpact.sessionsCompleted.toLocaleString(), icon: <AssessmentIcon /> },
+                { label: 'Countries Served', value: platformImpact.countriesServed.toLocaleString(), icon: <PublicIcon /> },
+                { label: 'Professionals Onboarded', value: platformImpact.professionalsOnboarded.toLocaleString(), icon: <ProfessionalsIcon /> }
               ].map((impact, index) => (
                 <Grid item xs={6} md={3} key={index}>
                   <Box sx={{ color: '#475569', mb: 1 }}>
                     {React.cloneElement(impact.icon, { sx: { fontSize: 36 } })}
                   </Box>
                   <Typography variant="h5" sx={{ color: '#1e293b', fontWeight: 700, mb: 0.5 }}>
-                    {impact.value}
+                    {loading ? 'Loading...' : impact.value}
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>
                     {impact.label}
@@ -916,4 +722,4 @@ const Home = () => {
   );
 };
 
-export default Home; 
+export default Home;

@@ -5,8 +5,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import validator from 'validator';
 import fs from 'fs';
+import Session from '../models/Session.js';
 import path from 'path';
 import { sendWelcomeEmail } from '../utils/sendEmail.js';
+import mongoose from 'mongoose';
+
 
 // Admin login
 export const login = async (req, res) => {
@@ -89,11 +92,13 @@ export const addCounsellor = async (req, res) => {
       phone,
       designation,
       chargePerHour,
-      esewaAccountId
+      esewaAccountId,
+      nmcNo,
+      qualification
     } = req.body;
 
     // Validate required fields
-    if (!fullName || !email || !password || !phone || !designation || !chargePerHour || !esewaAccountId) {
+    if (!fullName || !email || !password || !phone || !designation || !chargePerHour || !esewaAccountId || !qualification) {
       // Clean up any uploaded files if validation fails
       if (req.files?.profilePhoto?.[0]) {
         fs.unlinkSync(req.files.profilePhoto[0].path);
@@ -221,6 +226,8 @@ export const addCounsellor = async (req, res) => {
       designation,
       chargePerHour,
       esewaAccountId,
+      nmcNo,
+      qualification,
       profilePhoto: tempProfilePhoto ? {
         filename: tempProfilePhoto.filename,
         originalName: tempProfilePhoto.originalname,
@@ -259,6 +266,8 @@ export const addCounsellor = async (req, res) => {
         email: counsellor.email,
         phone: counsellor.phone,
         designation: counsellor.designation,
+        qualification:counsellor.qualification,
+        nmcNo: counsellor.nmcNo,
         chargePerHour: counsellor.chargePerHour,
         esewaAccountId: counsellor.esewaAccountId,
         profilePhoto: counsellor.profilePhoto,
@@ -605,6 +614,296 @@ export const previewCounsellorDocument = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error previewing document',
+      error: error.message
+    });
+  }
+};
+
+export const findCounsellorByParameters = async (req, res) => {
+  try {
+    const { searchQuery } = req.body;
+
+    // If no search query is provided, return all counsellors
+    if (!searchQuery) {
+      const counsellors = await Counsellor.find().select(
+        'fullName email designation phone profilePhoto documents chargePerHour bio isVerified isActive'
+      );
+      return res.status(200).json({
+        success: true,
+        data: counsellors,
+      });
+    }
+
+    // Build query object using $or for string fields
+    const query = {
+      $or: [
+        { fullName: { $regex: searchQuery, $options: 'i' } },
+        { email: { $regex: searchQuery, $options: 'i' } },
+        { designation: { $regex: searchQuery, $options: 'i' } },
+      ],
+    };
+
+    // Check if searchQuery can be parsed as a number for chargePerHour
+    const chargePerHour = parseFloat(searchQuery);
+    if (!isNaN(chargePerHour)) {
+      query.$or.push({ chargePerHour });
+    }
+
+    // Find counsellors matching the query
+    const counsellors = await Counsellor.find(query).select(
+      'fullName email designation phone profilePhoto documents chargePerHour bio isVerified isActive'
+    );
+
+    // Check if any counsellors were found
+    if (counsellors.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No counsellors found matching the provided criteria',
+      });
+    }
+
+    // Return the found counsellors
+    res.status(200).json({
+      success: true,
+      data: counsellors,
+    });
+  } catch (error) {
+    console.error('Error in findCounsellorByParameters:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error finding counsellors',
+      error: error.message,
+    });
+  }
+};
+
+
+export const findUserByParameters = async (req, res) => {
+  try {
+    const { searchQuery } = req.body;
+
+    // If no search query is provided, return all users
+    if (!searchQuery) {
+      const users = await User.find().select(
+        'fullName email emailVerified createdAt'
+      );
+      return res.status(200).json({
+        success: true,
+        data: users,
+      });
+    }
+
+    // Build query object using $or for string fields
+    const query = {
+      $or: [
+        { fullName: { $regex: searchQuery, $options: 'i' } },
+        { email: { $regex: searchQuery, $options: 'i' } },
+      ],
+    };
+
+    // Find users matching the query
+    const users = await User.find(query).select(
+      'fullName email emailVerified createdAt'
+    );
+
+    // Check if any users were found
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No users found matching the provided criteria',
+      });
+    }
+
+    // Return the found users
+    res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error('Error in findUserByParameters:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error finding users',
+      error: error.message,
+    });
+  }
+};
+
+
+export const getSessionDistribution = async (req, res) => {
+  try {
+    // Get current date and time
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000); // Current time + 1 hour
+
+    // Query to count sessions for each category
+    const sessionDistribution = await Session.aggregate([
+      {
+        $facet: {
+          completed: [
+            { $match: { status: 'completed' } },
+            { $count: 'count' }
+          ],
+          pending: [
+            { $match: { status: 'pending' } },
+            { $count: 'count' }
+          ],
+          cancelled: [
+            { $match: { status: 'rejected' } },
+            { $count: 'count' }
+          ],
+          active: [
+            {
+              $match: {
+                dateTime: {
+                  $gte: now,
+                  $lte: oneHourLater
+                }
+              }
+            },
+            { $count: 'count' }
+          ]
+        }
+      },
+      {
+        $project: {
+          completed: { $arrayElemAt: ['$completed.count', 0] },
+          pending: { $arrayElemAt: ['$pending.count', 0] },
+          cancelled: { $arrayElemAt: ['$cancelled.count', 0] },
+          active: { $arrayElemAt: ['$active.count', 0] }
+        }
+      }
+    ]);
+
+    // Handle cases where no sessions exist for a category
+    const result = {
+      completed: sessionDistribution[0]?.completed || 0,
+      pending: sessionDistribution[0]?.pending || 0,
+      cancelled: sessionDistribution[0]?.cancelled || 0,
+      active: sessionDistribution[0]?.active || 0
+    };
+
+    // Send response
+    res.status(200).json({
+      status: 'success',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error fetching session distribution:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch session distribution'
+    });
+  }
+};
+
+
+export const getPlatformImpact = async (req, res) => {
+  try {
+    // Calculate Lives Impacted (total users)
+    const livesImpacted = await User.countDocuments();
+
+    // Calculate Sessions Completed (sessions with status "completed")
+    const sessionsCompleted = await Session.countDocuments({ status: 'completed' });
+
+    // Countries Served (hardcoded to 1 as per requirement)
+    const countriesServed = 1;
+
+    // Calculate Professionals Onboarded (total counsellors)
+    const professionalsOnboarded = await Counsellor.countDocuments();
+
+    // Prepare response data
+    const impactData = {
+      livesImpacted,
+      sessionsCompleted,
+      countriesServed,
+      professionalsOnboarded
+    };
+
+    // Return successful response
+    res.status(200).json({
+      success: true,
+      data: impactData
+    });
+  } catch (error) {
+    console.error('Error in getPlatformImpact:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching platform impact data',
+      error: error.message
+    });
+  }
+};
+
+
+export const getCounsellorSessionInformation = async (req, res) => {
+  try {
+    const { counsellorId } = req.body;
+
+    // Validate counsellorId
+    if (!counsellorId || !mongoose.Types.ObjectId.isValid(counsellorId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or missing counsellorId'
+      });
+    }
+
+    // Convert counsellorId to ObjectId
+    const counsellorObjectId = new mongoose.Types.ObjectId(counsellorId);
+
+    // Calculate completed sessions
+    const completedSessions = await Session.countDocuments({
+      counsellor: counsellorObjectId,
+      status: 'completed'
+    });
+
+    // Calculate rejected sessions
+    const rejectedSessions = await Session.countDocuments({
+      counsellor: counsellorObjectId,
+      status: 'rejected'
+    });
+
+    // Calculate users served (unique users)
+    const usersServed = await Session.distinct('user', {
+      counsellor: counsellorObjectId
+    }).then(users => users.length);
+
+    // Calculate average rating
+    const ratingAggregation = await Session.aggregate([
+      {
+        $match: {
+          counsellor: counsellorObjectId,
+          rating: { $exists: true, $ne: null } // Only include sessions with ratings
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$rating' }
+        }
+      }
+    ]);
+
+    const averageRating = ratingAggregation.length > 0 ? Number(ratingAggregation[0].averageRating.toFixed(2)) : 0;
+
+    // Prepare response data
+    const sessionInformation = {
+      completedSessions,
+      rejectedSessions,
+      usersServed,
+      averageRating
+    };
+
+    // Return successful response
+    res.status(200).json({
+      success: true,
+      data: sessionInformation
+    });
+  } catch (error) {
+    console.error('Error in getCounsellorSessionInformation:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching counsellor session information',
       error: error.message
     });
   }

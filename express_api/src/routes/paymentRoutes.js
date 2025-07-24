@@ -113,7 +113,7 @@ router.post('/initiate', async (req, res) => {
 
   const transaction_uuid = `${appointmentId}-${uuidv4()}`;
   const paymentData = {
-    amount: amount.toString(),
+    amount: amount.toString(), 
     tax_amount: '0',
     total_amount: amount.toString(),
     transaction_uuid,

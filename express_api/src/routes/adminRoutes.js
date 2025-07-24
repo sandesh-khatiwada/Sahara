@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, addCounsellor, getProfile, getTotalUsers, getTotalCounsellors, getAllCounsellors, getAllUsers, getCounsellorById, downloadCounsellorDocument, previewCounsellorDocument } from '../controllers/adminController.js';
+import { login, addCounsellor, getProfile, getTotalUsers, getTotalCounsellors, getAllCounsellors, getAllUsers, getCounsellorById, downloadCounsellorDocument, previewCounsellorDocument, findCounsellorByParameters, findUserByParameters, getSessionDistribution, getPlatformImpact, getCounsellorSessionInformation } from '../controllers/adminController.js';
 import { verifyAdmin } from '../middleware/verifyAdmin.js';
 import { upload } from '../utils/fileUpload.js';
 
@@ -41,5 +41,15 @@ router.get('/counsellors/:counsellorId/documents/:documentIndex/preview', verify
 
 // GET /admin/users - Get all users (admin only)
 router.get('/users', verifyAdmin, getAllUsers);
+
+router.post("/counsellor/search",verifyAdmin,findCounsellorByParameters);
+
+router.post("/user/search", verifyAdmin, findUserByParameters);
+
+router.get("/session-distribution",verifyAdmin, getSessionDistribution);
+
+router.get("/platform-impact",verifyAdmin, getPlatformImpact);
+
+router.post("/counsellor-session-information",verifyAdmin, getCounsellorSessionInformation);
 
 export default router; 

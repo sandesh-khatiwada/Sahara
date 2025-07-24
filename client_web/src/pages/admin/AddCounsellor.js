@@ -32,7 +32,9 @@ const AddCounsellor = () => {
     chargePerHour: '',
     esewaAccountId: '',
     profilePhoto: null,
-    documents: []
+    documents: [],
+    nmcNo: '',
+    qualification: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState(null);
@@ -147,7 +149,17 @@ const AddCounsellor = () => {
     if (formData.documents.length === 0) {
       newErrors.documents = 'At least one document is required';
     }
-    
+
+    if (!formData.nmcNo.trim()) {
+      newErrors.nmcNo = 'NMC number is required';
+    } else if (!/^[A-Za-z0-9]{4,10}$/.test(formData.nmcNo)) {
+      newErrors.nmcNo = 'NMC number must be 4-10 alphanumeric characters';
+    }
+
+    if (!formData.qualification.trim()) {
+      newErrors.qualification = 'Qualification is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -172,6 +184,8 @@ const AddCounsellor = () => {
       formDataToSend.append('designation', formData.designation);
       formDataToSend.append('chargePerHour', formData.chargePerHour);
       formDataToSend.append('esewaAccountId', formData.esewaAccountId);
+      formDataToSend.append('nmcNo', formData.nmcNo);
+      formDataToSend.append('qualification', formData.qualification);
       
       if (formData.profilePhoto) {
         formDataToSend.append('profilePhoto', formData.profilePhoto);
@@ -203,7 +217,9 @@ const AddCounsellor = () => {
           chargePerHour: '',
           esewaAccountId: '',
           profilePhoto: null,
-          documents: []
+          documents: [],
+          nmcNo: '',
+          qualification: ''
         });
         setProfilePhotoPreview(null);
         document.getElementById('documents-bulk').value = '';
@@ -342,72 +358,67 @@ const AddCounsellor = () => {
                 </Stack>
 
                 {formData.documents.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Selected Documents ({formData.documents.length}/3):
-                    </Typography>
-                    <Box sx={{ 
-                      maxHeight: '200px', 
-                      overflowY: 'auto',
-                      bgcolor: 'background.paper',
-                      borderRadius: 1,
-                      p: 1,
-                      border: '1px solid',
-                      borderColor: 'divider'
-                    }}>
-                      {formData.documents.map((doc, index) => (
-                        <Box
-                          key={index}
+                  <Box sx={{ 
+                    maxHeight: '200px', 
+                    overflowY: 'auto',
+                    bgcolor: 'background.paper',
+                    borderRadius: 1,
+                    p: 1,
+                    border: '1px solid',
+                    borderColor: 'divider'
+                  }}>
+                    {formData.documents.map((doc, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          py: 0.5,
+                          px: 1,
+                          '&:not(:last-child)': {
+                            borderBottom: '1px solid',
+                            borderColor: 'divider'
+                          }
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
                           sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            py: 0.5,
-                            px: 1,
-                            '&:not(:last-child)': {
-                              borderBottom: '1px solid',
-                              borderColor: 'divider'
-                            }
+                            flex: 1,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
                           }}
                         >
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              flex: 1,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {doc.name}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ mx: 1 }}
-                          >
-                            {(doc.size / 1024).toFixed(1)} KB
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            onClick={() => removeDocument(index)}
-                            color="error"
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      ))}
-                    </Box>
-                    <Typography
-                      variant="caption"
-                      color={formData.documents.length === 3 ? 'error' : 'text.secondary'}
-                      sx={{ display: 'block', mt: 1 }}
-                    >
-                      {formData.documents.length === 3
-                        ? 'Maximum number of documents reached'
-                        : `You can add ${3 - formData.documents.length} more document${3 - formData.documents.length === 1 ? '' : 's'}`}
-                    </Typography>
+                          {doc.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ mx: 1 }}
+                        >
+                          {(doc.size / 1024).toFixed(1)} KB
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => removeDocument(index)}
+                          color="error"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ))}
                   </Box>
                 )}
+                <Typography
+                  variant="caption"
+                  color={formData.documents.length === 3 ? 'error' : 'text.secondary'}
+                  sx={{ display: 'block', mt: 1 }}
+                >
+                  {formData.documents.length === 3
+                    ? 'Maximum number of documents reached'
+                    : `You can add ${3 - formData.documents.length} more document${3 - formData.documents.length === 1 ? '' : 's'}`}
+                </Typography>
               </Box>
             </Grid>
 
@@ -510,6 +521,34 @@ const AddCounsellor = () => {
               />
             </Grid>
 
+            <Grid item xs={12} md={6}>
+              <TextField
+                required
+                fullWidth
+                label="NMC Number"
+                name="nmcNo"
+                value={formData.nmcNo}
+                onChange={handleChange}
+                error={!!errors.nmcNo}
+                helperText={errors.nmcNo}
+                sx={{ mb: 2 }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                required
+                fullWidth
+                label="Qualification"
+                name="qualification"
+                value={formData.qualification}
+                onChange={handleChange}
+                error={!!errors.qualification}
+                helperText={errors.qualification}
+                sx={{ mb: 2 }}
+              />
+            </Grid>
+
             <Grid item xs={12}>
               <TextField
                 required
@@ -550,4 +589,4 @@ const AddCounsellor = () => {
   );
 };
 
-export default AddCounsellor; 
+export default AddCounsellor;

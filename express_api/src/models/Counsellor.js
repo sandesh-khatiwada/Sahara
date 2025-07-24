@@ -67,6 +67,12 @@ const counsellorSchema = new mongoose.Schema({
   bio:{
     type:String
   },
+  nmcNo:{
+      type: String
+  },
+  qualification:{
+    type:String
+  },
   passwordChangeStatus: {
     type: Boolean,
     default: false

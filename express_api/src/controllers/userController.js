@@ -219,6 +219,8 @@ export const getCounsellors = async (req, res) => {
           fullName: 1,
           designation: 1,
           email: 1,
+          nmcNo:1,
+          qualification:1,
           chargePerHour: 1,
           profilePhoto: 1,
           _id: 0 // Exclude _id from the result
@@ -448,6 +450,8 @@ export const getAllCounsellors = async (req, res) => {
           chargePerHour: 1,
           esewaAccountId: 1,
           profilePhoto: 1,
+          nmcNo:1,
+          qualification:1,
           documents: 1,
           averageRating: 1,
           reviewsCount: 1,
@@ -669,6 +673,8 @@ export const getCounsellorByEmail = async (req, res) => {
           designation: 1,
           chargePerHour: 1,
           esewaAccountId: 1,
+          nmcNo:1,
+          qualification:1,
           profilePhoto: 1,
           documents: 1,
           patientsCount: 1,
@@ -946,13 +952,13 @@ export const addSleepLog = async (req, res) => {
         const userId = req.user._id;
 
         // Validate quality field manually
-        const allowedQualities = ['Poor', 'Fair', 'Good'];
+        const allowedQualities = ['Poor', 'Fair', 'Good', 'Excellent'];
         if (!allowedQualities.includes(quality)) {
             return res.status(400).json({
                 success: false,
-                message: 'Quality must be one of: Poor, Fair, or Good.'
+                message: 'Quality must be one of: Poor, Fair, Good or Excellent.'
             });
-        }
+        } 
 
         const timezone = 'Asia/Kathmandu';
         const startOfDay = moment().tz(timezone).startOf('day').toDate();

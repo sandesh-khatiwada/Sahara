@@ -11,11 +11,16 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  useTheme
+  useTheme,
+  TextField,
+  InputAdornment,
+  Button,
+  FormControl
 } from '@mui/material';
 import {
   Group as GroupIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -28,6 +33,7 @@ const Users = () => {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -50,8 +56,41 @@ const Users = () => {
     }
   };
 
+  const searchUsers = async () => {
+    if (!searchQuery.trim()) {
+      fetchUsers(); // Revert to full list if search query is empty
+      return;
+    }
+    try {
+      setLoading(true);
+      const response = await axios.post('http://localhost:5000/api/admin/user/search', {
+        searchQuery
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      });
+      setUsers(response.data.data);
+      setTotalPages(1); // Search results typically aren't paginated
+    } catch (err) {
+      setError('Failed to search users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePageChange = (event, value) => {
     setPage(value);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    setPage(1); // Reset to first page when searching
+    searchUsers();
   };
 
   const getInitials = (name) => {
@@ -88,6 +127,66 @@ const Users = () => {
 
   return (
     <Box sx={{ position: 'relative' }}>
+      {/* Search Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Box sx={{
+          mb: 4,
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: 3,
+          p: 3,
+          border: '1px solid rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
+        }}>
+          <FormControl component="form" onSubmit={handleSearchSubmit} sx={{ display: 'flex', flexDirection: 'row', gap: 2, alignItems: 'center' }}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search users by name or email..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: '#64748b' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  '&:hover fieldset': {
+                    borderColor: theme.palette.primary.main,
+                  },
+                },
+              }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleSearchSubmit}
+              sx={{
+                borderRadius: 3,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 4,
+                py: 1.5,
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+                }
+              }}
+            >
+              Search
+            </Button>
+          </FormControl>
+        </Box>
+      </motion.div>
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -30 }}
@@ -250,46 +349,48 @@ const Users = () => {
         </AnimatePresence>
       </Grid>
       {/* Pagination */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.6 }}
-      >
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            mt: 6,
-            p: 3,
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderRadius: 3,
-            border: '1px solid rgba(0, 0, 0, 0.05)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
-          }}
+      {!searchQuery && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
         >
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
-            size="large"
-            sx={{
-              '& .MuiPaginationItem-root': {
-                fontWeight: 600,
-                borderRadius: 2,
-                '&.Mui-selected': {
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  color: 'white',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                }
-              }
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              mt: 6,
+              p: 3,
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: 3,
+              border: '1px solid rgba(0, 0, 0, 0.05)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
             }}
-          />
-        </Box>
-      </motion.div>
+          >
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+              size="large"
+              sx={{
+                '& .MuiPaginationItem-root': {
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  '&.Mui-selected': {
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                  }
+                }
+              }}
+            />
+          </Box>
+        </motion.div>
+      )}
     </Box>
   );
 };
 
-export default Users; 
+export default Users;

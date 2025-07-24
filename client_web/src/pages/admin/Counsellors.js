@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container,
   Grid,
   Card,
   CardContent,
@@ -14,18 +13,19 @@ import {
   Alert,
   Avatar,
   Chip,
-  IconButton,
   Paper,
-  useTheme
+  useTheme,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Email as EmailIcon,
   Person as PersonIcon,
   Work as WorkIcon,
   Visibility as VisibilityIcon,
-  Phone as PhoneIcon,
   Psychology as PsychologyIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -39,10 +39,13 @@ const Counsellors = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [imageErrors, setImageErrors] = useState(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchCounsellors();
-  }, [page]);
+    if (!searchQuery) {
+      fetchCounsellors();
+    }
+  }, [page, searchQuery]);
 
   const fetchCounsellors = async () => {
     try {
@@ -53,12 +56,46 @@ const Counsellors = () => {
         }
       });
       setCounsellors(response.data.data.counsellors);
-      // Fix: Use totalCounsellors from pagination object and ensure it's a number
       const totalCounsellors = response.data.data.pagination?.totalCounsellors || 0;
       setTotalPages(Math.ceil(totalCounsellors / 10) || 1);
     } catch (err) {
       setError('Failed to fetch counsellors');
-      setTotalPages(1); // Set to 1 on error to prevent NaN
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchCounsellors = async () => {
+    if (!searchQuery.trim()) {
+      setError('Please enter a search query');
+      return;
+    }
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        'http://localhost:5000/api/admin/counsellor/search',
+        { searchQuery },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      if (response.data.success) {
+        setCounsellors(response.data.data);
+        setTotalPages(1); // No pagination for search results
+        setError('');
+      } else {
+        setCounsellors([]);
+        setTotalPages(1);
+        setError(response.data.message || 'No counsellors found');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to search counsellors');
+      setCounsellors([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -70,6 +107,16 @@ const Counsellors = () => {
 
   const handlePageChange = (event, value) => {
     setPage(value);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleSearchSubmit = (e) => {
+    if (e.key === 'Enter') {
+      searchCounsellors();
+    }
   };
 
   if (loading) {
@@ -99,14 +146,15 @@ const Counsellors = () => {
   return (
     <Box sx={{ position: 'relative' }}>
       {/* Header */}
-      <motion.div          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+      <motion.div
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
       >
         <Box sx={{ 
           display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+          flexDirection: 'column', 
+          gap: 3,
           mb: 6,
           background: 'rgba(255, 255, 255, 0.9)',
           backdropFilter: 'blur(20px)',
@@ -117,26 +165,51 @@ const Counsellors = () => {
           position: 'relative',
           overflow: 'hidden'
         }}>
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-              <PsychologyIcon sx={{ fontSize: 36, color: '#1e293b' }} />
-              <Typography 
-                variant="h2" 
-                sx={{ 
-                  fontWeight: 800, 
-                  background: 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-                  textShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                  letterSpacing: '-0.02em'
-                }}
-              >
-                Counsellors
-              </Typography>
-            </Box>
-            <Typography variant="h6" sx={{ color: '#475569', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <PsychologyIcon sx={{ fontSize: 36, color: '#1e293b' }} />
+            <Typography 
+              variant="h2" 
+              sx={{ 
+                fontWeight: 800, 
+                background: 'linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                textShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                letterSpacing: '-0.02em'
+              }}
+            >
+              Counsellors
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search by name, email, designation, or charge per hour"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onKeyPress={handleSearchSubmit}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: '#64748b' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                maxWidth: 500,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  '&:hover fieldset': {
+                    borderColor: theme.palette.primary.main
+                  }
+                }
+              }}
+            />
+            <Typography variant="h6" sx={{ color: '#475569' }}>
               Manage and view all registered counsellors
             </Typography>
             <Typography variant="body1" sx={{ color: '#64748b' }}>
@@ -250,28 +323,7 @@ const Counsellors = () => {
                         </Avatar>
                       </Box>
                     )}
-                    <Box sx={{
-                      position: 'absolute',
-                      top: 12,
-                      right: 12,
-                      background: 'rgba(255, 255, 255, 0.95)',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: 2,
-                      px: 1.5,
-                      py: 0.5
-                    }}>
-                      <Chip 
-                        label="Active" 
-                        size="small" 
-                        sx={{ 
-                          bgcolor: '#10b981', 
-                          color: 'white',
-                          fontWeight: 600,
-                          fontSize: '0.7rem',
-                          height: '22px'
-                        }} 
-                      />
-                    </Box>
+                   
                   </Box>
                   
                   <CardContent sx={{ p: 3 }}>
@@ -306,7 +358,7 @@ const Counsellors = () => {
                             fontSize: '0.85rem'
                           }}
                         >
-                          Professional ID: #{counsellor._id.slice(-6).toUpperCase()}
+                          NMC No: {counsellor.nmcNo || '' }
                         </Typography>
                       </Box>
                     </Box>
@@ -383,46 +435,48 @@ const Counsellors = () => {
       </Grid>
 
       {/* Pagination */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.6 }}
-      >
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            mt: 6,
-            p: 3,
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderRadius: 3,
-            border: '1px solid rgba(0, 0, 0, 0.05)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
-          }}
+      {!searchQuery && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
         >
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
-            size="large"
-            sx={{
-              '& .MuiPaginationItem-root': {
-                fontWeight: 600,
-                borderRadius: 2,
-                '&.Mui-selected': {
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  color: 'white',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                }
-              }
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              mt: 6,
+              p: 3,
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: 3,
+              border: '1px solid rgba(0, 0, 0, 0.05)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
             }}
-          />
-        </Box>
-      </motion.div>
+          >
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+              size="large"
+              sx={{
+                '& .MuiPaginationItem-root': {
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  '&.Mui-selected': {
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                  }
+                }
+              }}
+            />
+          </Box>
+        </motion.div>
+      )}
     </Box>
   );
 };
 
-export default Counsellors; 
+export default Counsellors;

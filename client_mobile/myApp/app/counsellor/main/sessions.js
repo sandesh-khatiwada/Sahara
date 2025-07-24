@@ -90,6 +90,11 @@ const SessionCard = ({ session, onPress, onJoin }) => {
 };
 
 const SessionDetailsModal = ({ visible, session, onClose }) => {
+  const handleDownloadReport = () => {
+    // Here you can implement your download logic
+    // Example: fetch(`${API_BASE_URL}/api/session/${session.id}/report`)
+    Alert.alert("Download Report", "Report download started...");
+  };
   if (!session) return null;
 
   return (
@@ -124,6 +129,10 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
               <Text style={styles.modalInfoText}>{session.duration}</Text>
             </View>
           </View>
+          <TouchableOpacity style={styles.downloadButton} onPress={handleDownloadReport}>
+            <MaterialCommunityIcons name="download" size={20} color="#fff" />
+            <Text style={styles.downloadButtonText}>Download Report</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     </Modal>
@@ -428,7 +437,24 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.05)',
+
   },
+  downloadButton: {
+  flexDirection: 'row',
+  backgroundColor: '#007AFF',
+  padding: 12,
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 10,
+},
+downloadButtonText: {
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: '600',
+  marginLeft: 8,
+},
+
   sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sessionClientInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   sessionAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },

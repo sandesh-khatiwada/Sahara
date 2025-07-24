@@ -56,7 +56,7 @@ const CounsellorHeader = ({ profileInfo, onLogout }) => {
   const getProfileImageUri = () => {
     if (imageError) return DEFAULT_PROFILE_IMAGE;
     if (profileInfo?.profilePhoto?.path) {
-      return `${API_BASE_URL}/uploads/profile_photos/${profileInfo.profilePhoto.filename}`;
+      return `${API_BASE_URL}/Uploads/profile_photos/${profileInfo.profilePhoto.filename}`;
     }
     return DEFAULT_PROFILE_IMAGE;
   };
@@ -137,7 +137,10 @@ const StatCard = ({ icon, title, value, color, onPress }) => (
 );
 
 const SessionCard = ({ session }) => (
-  <View style={styles.sessionCard}>
+  <TouchableOpacity
+    style={styles.sessionCard}
+    onPress={() => router.push(`/counsellor/main/sessions?filter=upcoming&sessionId=${session.id}`)}
+  >
     <View style={styles.sessionHeader}>
       <View style={styles.sessionClientInfo}>
         <View style={styles.sessionAvatar}>
@@ -150,11 +153,14 @@ const SessionCard = ({ session }) => (
         </View>
       </View>
     </View>
-  </View>
+  </TouchableOpacity>
 );
 
 const RequestCard = ({ request }) => (
-  <View style={styles.requestCard}>
+  <TouchableOpacity
+    style={styles.requestCard}
+    onPress={() => router.push('/counsellor/main/requests')}
+  >
     <View style={styles.requestHeader}>
       <View style={styles.requestClientInfo}>
         <View style={styles.requestAvatar}>
@@ -167,7 +173,7 @@ const RequestCard = ({ request }) => (
         </View>
       </View>
     </View>
-  </View>
+  </TouchableOpacity>
 );
 
 export default function CounsellorHome() {
@@ -348,7 +354,6 @@ export default function CounsellorHome() {
             const counsellorInfo = parsedUserData.Counsellor || parsedUserData;
             setCounsellorData(counsellorInfo);
 
-            // Fetch data after counsellor data is loaded
             await Promise.all([
               fetchProfileInfo(token),
               fetchTotalStats(token),
@@ -467,7 +472,7 @@ export default function CounsellorHome() {
                     title="Completed Sessions"
                     value={totalStats.completedSessions}
                     color="#4CAF50"
-                    onPress={() => router.push('/counsellor/main/sessions')}
+                    onPress={() => router.push('/counsellor/main/sessions?filter=completed')}
                   />
                   <StatCard
                     icon="account-plus"
@@ -487,7 +492,6 @@ export default function CounsellorHome() {
                     title="Total Clients"
                     value={totalStats.totalClients}
                     color="#9C27B0"
-                
                   />
                 </View>
               )}
@@ -497,7 +501,7 @@ export default function CounsellorHome() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
-                <TouchableOpacity onPress={() => router.push('/counsellor/main/sessions')}>
+                <TouchableOpacity onPress={() => router.push('/counsellor/main/sessions?filter=upcoming')}>
                   <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>

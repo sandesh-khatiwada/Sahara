@@ -97,6 +97,8 @@ export default function CounsellorProfile() {
     designation: '',
     chargePerHour: 0,
     profilePhoto: null,
+    nmcNo: '',
+    qualification: '',
   });
   const [editModal, setEditModal] = useState({
     visible: false,
@@ -113,17 +115,14 @@ export default function CounsellorProfile() {
   const { hideNavbar, showNavbar } = useNavbar();
   const scrollY = useRef(0);
   const scrollDirection = useRef(null);
-  
-    const getProfileImageUri = () => {
-      if (imageError) return DEFAULT_PROFILE_IMAGE;
-  
-      if (counsellorData?.profilePhoto?.filename) {
-        return `${API_BASE_URL}/uploads/profile_photos/${counsellorData.profilePhoto.filename}`
-  
-         
-      }
-      return DEFAULT_PROFILE_IMAGE;
-    };
+
+  const getProfileImageUri = () => {
+    if (imageError) return DEFAULT_PROFILE_IMAGE;
+    if (counsellorData?.profilePhoto?.filename) {
+      return `${API_BASE_URL}/uploads/profile_photos/${counsellorData.profilePhoto.filename}`;
+    }
+    return DEFAULT_PROFILE_IMAGE;
+  };
 
   const handleScroll = (event) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
@@ -164,6 +163,8 @@ export default function CounsellorProfile() {
           designation: json.data.designation || '',
           chargePerHour: json.data.chargePerHour || 0,
           profilePhoto: json.data.profilePhoto || null,
+          nmcNo: json.data.nmcNo || '',
+          qualification: json.data.qualification || '',
         });
       } else {
         throw new Error(json.message || 'Failed to load profile information');
@@ -219,6 +220,8 @@ export default function CounsellorProfile() {
           designation: json.data.designation || '',
           chargePerHour: json.data.chargePerHour || 0,
           profilePhoto: json.data.profilePhoto || null,
+          nmcNo: json.data.nmcNo ,
+          qualification: json.data.qualification ,
         });
         Alert.alert('Success', 'Profile updated successfully');
       } else {
@@ -338,7 +341,6 @@ export default function CounsellorProfile() {
             icon="phone"
             title="Phone"
             value={counsellorData.phone || 'Add your phone number'}
-           
           />
           <ProfileItem
             icon="text"
@@ -360,6 +362,16 @@ export default function CounsellorProfile() {
             title="Charge per Hour"
             value={`Rs.${counsellorData.chargePerHour || '0'}`}
             onPress={() => handleEditField('chargePerHour', 'Charge per Hour', false, 'numeric')}
+          />
+          <ProfileItem
+            icon="card-text"
+            title="NMC No"
+            value={counsellorData.nmcNo || 'N/A'}
+          />
+          <ProfileItem
+            icon="school"
+            title="Qualification"
+            value={counsellorData.qualification || 'N/A'}
           />
         </ProfileSection>
 
@@ -572,4 +584,3 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
 });
-

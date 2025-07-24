@@ -1,22 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   ScrollView,
+  Text,
   StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  TextInput,
   TouchableOpacity,
-  SafeAreaView,
+  Alert,
+  TextInput,
+  Modal,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '@env';
 import { router } from 'expo-router';
+import { API_BASE_URL } from '@env';
+
+const { width } = Dimensions.get('window');
 
 const formatDate = (isoDate) => {
+  if (!isoDate) return 'N/A';
   const date = new Date(isoDate);
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -25,42 +28,150 @@ const formatDate = (isoDate) => {
   });
 };
 
-export default function UserProfile() {
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editFullName, setEditFullName] = useState('');
+const ProfileSection = ({ title, children }) => (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    {children}
+  </View>
+);
+
+const ProfileItem = ({ icon, title, value, onPress, rightComponent, valueStyle }) => (
+  <TouchableOpacity style={styles.profileItem} onPress={onPress} disabled={!onPress}>
+    <View style={styles.profileItemLeft}>
+      <MaterialCommunityIcons name={icon} size={24} color="#007AFF" />
+      <View style={styles.profileItemContent}>
+        <Text style={styles.profileItemTitle}>{title}</Text>
+        {value && <Text style={[styles.profileItemValue, valueStyle]}>{value}</Text>}
+      </View>
+    </View>
+    {rightComponent || (onPress && <MaterialCommunityIcons name="chevron-right" size={24} color="#ccc" />)}
+  </TouchableOpacity>
+);
+
+const EditModal = ({ visible, title, value, onClose, onSave }) => {
+  const [editValue, setEditValue] = useState(value);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    setEditValue(value);
+  }, [value]);
+
+  const handleSave = () => {
+    onSave(editValue);
+    onClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={styles.modalCancel}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Edit {title}</Text>
+          <TouchableOpacity onPress={handleSave}>
+            <Text style={styles.modalSave}>Save</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.modalContent}>
+          <TextInput
+            style={styles.modalInput}
+            value={editValue}
+            onChangeText={setEditValue}
+            placeholder={`Enter ${title.toLowerCase()}`}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+export default function UserProfile() {
+  const [userData, setUserData] = useState({
+    fullName: '',
+    email: '',
+    createdAt: '',
+    emailVerified: false,
+  });
+  const [editModal, setEditModal] = useState({
+    visible: false,
+    title: '',
+    value: '',
+    field: '',
+  });
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const scrollY = useRef(0);
+  const scrollDirection = useRef(null);
+
+  const handleScroll = (event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const direction = currentScrollY > scrollY.current ? 'down' : 'up';
+    
+    if (direction !== scrollDirection.current) {
+      scrollDirection.current = direction;
+      // Navbar handling can be added here if needed
+    }
+    scrollY.current = currentScrollY;
+  };
 
   const fetchProfile = async () => {
     try {
+      setLoadingProfile(true);
       const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('No token found');
+      }
       const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       const result = await response.json();
-      if (result.success) {
-        setUserData(result.data);
-        setEditFullName(result.data.fullName);
+      if (result.success && result.data) {
+        setUserData({
+          fullName: result.data.fullName || '',
+          email: result.data.email || '',
+          createdAt: result.data.createdAt || '',
+          emailVerified: result.data.emailVerified || false,
+        });
       } else {
-        Alert.alert('Error', 'Failed to fetch profile details');
+        throw new Error(result.message || 'Failed to fetch profile details');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to fetch profile details');
+      console.error('Fetch profile error:', error.message);
+      Alert.alert('Error', `Failed to fetch profile: ${error.message}`);
+      if (error.message.includes('Unauthorized') || error.message.includes('Invalid token') || error.message.includes('No token found')) {
+        Alert.alert(
+          'Authentication Error',
+          'Your session is invalid. Please login again.',
+          [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        );
+      }
     } finally {
-      setLoading(false);
+      setLoadingProfile(false);
     }
   };
 
-  const handleSaveFullName = async () => {
+  const handleEditField = (field, title) => {
+    setEditModal({
+      visible: true,
+      title,
+      value: userData[field]?.toString() || '',
+      field,
+    });
+  };
+
+  const handleSaveField = async (value) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/users/profile?fullName=${encodeURIComponent(editFullName)}`, {
+      if (!token) {
+        throw new Error('No token found');
+      }
+      const response = await fetch(`${API_BASE_URL}/api/users/profile?fullName=${encodeURIComponent(value)}`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -68,305 +179,307 @@ export default function UserProfile() {
       });
       const result = await response.json();
       if (result.success) {
-        setUserData(result.data);
-        setEditModalVisible(false);
+        setUserData(prev => ({ ...prev, fullName: result.data.fullName }));
         Alert.alert('Success', 'Full name updated successfully');
       } else {
-        Alert.alert('Error', 'Failed to update full name');
+        throw new Error(result.message || 'Failed to update full name');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to update full name');
+      console.error('Update profile error:', error.message);
+      Alert.alert('Error', `Failed to update full name: ${error.message}`);
+      if (error.message.includes('Unauthorized') || error.message.includes('Invalid token') || error.message.includes('No token found')) {
+        Alert.alert(
+          'Authentication Error',
+          'Your session is invalid. Please login again.',
+          [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        );
+      }
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem('token');
-      router.replace('/auth/login');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to logout. Please try again.');
-    }
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('token');
+              router.replace('/auth/login');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  if (loading) {
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  if (loadingProfile) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#007AFF" />
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <MaterialCommunityIcons name="loading" size={48} color="#007AFF" />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <MaterialCommunityIcons name="alert-circle" size={48} color="#d00" />
-          <Text style={styles.errorText}>Failed to load user data.</Text>
-        </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Your Profile</Text>
-
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.fieldContainer} onPress={() => setEditModalVisible(true)} activeOpacity={0.7}>
-            <View style={styles.iconContainer}>
-              <MaterialCommunityIcons name="account" size={24} color="#007AFF" />
-            </View>
-            <View style={styles.fieldContent}>
-              <Text style={styles.label}>Full Name</Text>
-              <Text style={[styles.value, styles.editable]}>{userData.fullName}</Text>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.separator} />
-
-          <View style={styles.fieldContainer}>
-            <View style={styles.iconContainer}>
-              <MaterialCommunityIcons name="email" size={24} color="#007AFF" />
-            </View>
-            <View style={styles.fieldContent}>
-              <Text style={styles.label}>Email</Text>
-              <Text style={styles.value}>{userData.email}</Text>
-            </View>
+    <View style={styles.container}>
+      {Platform.OS !== 'web' && (
+        <View style={styles.gradientBackground}>
+          <View style={styles.gradientTop} />
+          <View style={styles.gradientBottom} />
+        </View>
+      )}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <MaterialCommunityIcons name="arrow-left" size={24} color="#007AFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Profile</Text>
+            <View style={styles.headerSpacer} />
           </View>
-
-          <View style={styles.separator} />
-
-          <View style={styles.fieldContainer}>
-            <View style={styles.iconContainer}>
-              <MaterialCommunityIcons name="calendar" size={24} color="#007AFF" />
-            </View>
-            <View style={styles.fieldContent}>
-              <Text style={styles.label}>Joined At</Text>
-              <Text style={styles.value}>{formatDate(userData.createdAt)}</Text>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          <View style={styles.fieldContainer}>
-            <View style={styles.iconContainer}>
-              <MaterialCommunityIcons
-                name={userData.emailVerified ? "check-circle" : "close-circle"}
-                size={24}
-                color={userData.emailVerified ? '#2e7d32' : '#c62828'}
-              />
-            </View>
-            <View style={styles.fieldContent}>
-              <Text style={styles.label}>Email Verified</Text>
-              <Text style={[styles.value, { color: userData.emailVerified ? '#2e7d32' : '#c62828' }]}>
-                {userData.emailVerified ? 'Yes ✅' : 'No ❌'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <MaterialCommunityIcons name="logout" size={20} color="#fff" />
-            <Text style={styles.logoutButtonText}>Log Out</Text>
-          </TouchableOpacity>
         </View>
 
-        <Modal visible={editModalVisible} animationType="fade" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Edit Full Name</Text>
-              <View style={styles.inputContainer}>
-                <MaterialCommunityIcons name="account" size={20} color="#007AFF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={editFullName}
-                  onChangeText={setEditFullName}
-                  placeholder="Enter your full name"
-                  placeholderTextColor="#aaa"
-                />
-              </View>
-              <View style={styles.modalButtons}>
-                <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.cancelButton}>
-                  <Text style={[styles.buttonText, { color: '#333' }]}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSaveFullName} style={styles.saveButton}>
-                  <Text style={[styles.buttonText, { color: '#fff' }]}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            </View>
-          </Modal>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
+        <View style={styles.profileHeader}>
+          <Text style={styles.profileName}>{userData.fullName || 'Full Name'}</Text>
+          <Text style={styles.profileDesignation}>{userData.email || 'Email'}</Text>
+        </View>
+
+        <ProfileSection title="Personal Information">
+          <ProfileItem
+            icon="account"
+            title="Full Name"
+            value={userData.fullName || 'Add your full name'}
+            onPress={() => handleEditField('fullName', 'Full Name')}
+          />
+          <ProfileItem
+            icon="email"
+            title="Email"
+            value={userData.email || 'Add your email'}
+          />
+          <ProfileItem
+            icon="calendar"
+            title="Joined At"
+            value={formatDate(userData.createdAt)}
+          />
+          <ProfileItem
+            icon={userData.emailVerified ? "check-circle" : "close-circle"}
+            title="Email Verified"
+            value={userData.emailVerified ? 'Yes ✅' : 'No ❌'}
+            valueStyle={{ color: userData.emailVerified ? '#2e7d32' : '#c62828' }}
+          />
+        </ProfileSection>
+
+        <ProfileSection title="Account">
+          <ProfileItem
+            icon="logout"
+            title="Logout"
+            onPress={handleLogout}
+          />
+        </ProfileSection>
+
+        <EditModal
+          visible={editModal.visible}
+          title={editModal.title}
+          value={editModal.value}
+          onClose={() => setEditModal({ ...editModal, visible: false })}
+          onSave={handleSaveField}
+        />
+      </ScrollView>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4f8', // Solid background color
+    backgroundColor: '#f0f4f8ff',
+    position: 'relative',
+    marginTop:35,
+  },
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  gradientTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: '50%',
+    backgroundColor: '#ffffff',
+  },
+  gradientBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '50%',
+    backgroundColor: '#e3f2fd',
+    opacity: 0.6,
   },
   scrollView: {
     flex: 1,
+    zIndex: 2,
   },
-  content: {
+  header: {
+    backgroundColor: '#fff',
     padding: 20,
-    paddingBottom: 40,
+    paddingTop: Platform.OS === 'ios' ? 40 : 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  heading: {
-    fontSize: 28,
-    fontWeight: '700',
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  backButton: {
+    padding: 5,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#003087',
-    alignSelf: 'center',
-    marginVertical: 20,
-    letterSpacing: -0.5,
-  },
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  fieldContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  fieldContent: {
     flex: 1,
+    textAlign: 'center',
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
+  headerSpacer: {
+    width: 24,
   },
-  value: {
-    fontSize: 18,
-    fontWeight: '500',
+  profileHeader: {
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    marginTop:10,
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#333',
+    marginBottom: 8,
   },
-  editable: {
+  profileDesignation: {
+    fontSize: 16,
     color: '#007AFF',
+    fontWeight: '600',
+    marginBottom: 3,
   },
-  separator: {
-    height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    marginVertical: 12,
+  section: {
+    backgroundColor: '#fff',
+    marginTop: 10,
+    paddingVertical: 10,
   },
-  logoutButton: {
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#F8F9FA',
+    marginTop:15,
+  },
+  profileItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  profileItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E91E63',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginTop: 20,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  centered: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 12,
+  profileItemContent: {
+    marginLeft: 15,
+    flex: 1,
+  },
+  profileItemTitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#333',
     fontWeight: '500',
   },
-  errorText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#d00',
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 20,
+  profileItemValue: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
   modalContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#003087',
-    marginBottom: 20,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    marginBottom: 20,
+    flex: 1,
     backgroundColor: '#fff',
   },
-  inputIcon: {
-    marginLeft: 12,
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    marginTop: Platform.OS === 'ios' ? 20 : 0,
   },
-  input: {
-    flex: 1,
-    padding: 12,
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
   },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  cancelButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    backgroundColor: '#f0f0f0',
-  },
-  saveButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    backgroundColor: '#007AFF',
-  },
-  buttonText: {
+  modalCancel: {
     fontSize: 16,
+    color: '#666',
+  },
+  modalSave: {
+    fontSize: 16,
+    color: '#007AFF',
     fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
 });

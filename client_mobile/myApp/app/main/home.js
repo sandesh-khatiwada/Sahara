@@ -72,8 +72,20 @@ const AppointmentCard = ({ appointment }) => (
 
 const DoctorCard = ({ doctor }) => {
   const imageUrl = `${API_BASE_URL}/Uploads/profile_photos/${doctor.profilePhoto.filename}`;
+
   return (
-    <TouchableOpacity style={styles.doctorCard}>
+    <TouchableOpacity
+      style={styles.doctorCard}
+      onPress={() =>
+        router.push({
+          pathname: '/seeall/userside/doctordetails',
+          params: {
+            email: doctor.email,
+            doctorName: doctor.fullName,
+          },
+        })
+      }
+    >
       <Image source={{ uri: imageUrl }} style={styles.doctorImage} />
       <Text style={styles.doctorName}>{doctor.fullName}</Text>
       <Text style={styles.appointmentSpecialty}>{doctor.designation}</Text>
@@ -228,7 +240,10 @@ const UpcomingAppointmentCard = ({ appointment }) => {
   const imageUrl = `${API_BASE_URL}/Uploads/profile_photos/${counsellor.profilePhoto.filename}`;
 
   return (
-    <View style={styles.appointmentCard}>
+    <TouchableOpacity
+      style={styles.appointmentCard}
+      onPress={() => router.push('/main/sessions')}
+    >
       <Image source={{ uri: imageUrl }} style={styles.appointmentImage} />
       <View style={styles.appointmentDetails}>
         <Text style={styles.appointmentDate}>{date}</Text>
@@ -236,7 +251,7 @@ const UpcomingAppointmentCard = ({ appointment }) => {
         <Text style={styles.appointmentDoctor}>{counsellor.fullName}</Text>
         <Text style={styles.appointmentSpecialty}>{counsellor.designation}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

@@ -93,15 +93,11 @@ const ResetOtp = () => {
         return;
       }
 
-      // Call the same endpoint or correct resend endpoint
-      // Assuming same endpoint to initiate OTP resend:
       const response = await fetch(`${API_BASE_URL}/api/users/otp/resend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }), // You may need to store newPassword temporarily or adjust API accordingly
+        body: JSON.stringify({ email }),
       });
-
-      // Or if you have a dedicated resend OTP endpoint, replace the above fetch URL and body
 
       if (response.ok) {
         setCountdown(60);
@@ -125,8 +121,20 @@ const ResetOtp = () => {
 
     if (numericValue && index < 5) {
       otpInputs.current[index + 1]?.focus();
-    } else if (!numericValue && index > 0) {
-      otpInputs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = ({ nativeEvent: { key } }, index) => {
+    if (key === 'Backspace') {
+      const newOtp = [...otp];
+      if (otp[index]) {
+        newOtp[index] = '';
+        setOtp(newOtp);
+      } else if (index > 0) {
+        newOtp[index - 1] = '';
+        setOtp(newOtp);
+        otpInputs.current[index - 1].focus();
+      }
     }
   };
 
@@ -151,6 +159,7 @@ const ResetOtp = () => {
               ]}
               value={digit}
               onChangeText={(text) => handleOtpChange(text, index)}
+              onKeyPress={(e) => handleKeyPress(e, index)}
               keyboardType="number-pad"
               maxLength={1}
               ref={(ref) => (otpInputs.current[index] = ref)}

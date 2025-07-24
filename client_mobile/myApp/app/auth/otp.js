@@ -111,11 +111,25 @@ const Otp = () => {
     newOtp[index] = numericValue.slice(0, 1);
     setOtp(newOtp);
 
-    // Auto-focus next input or previous on backspace
+    // Auto-focus next input if a digit is entered
     if (numericValue && index < 5) {
       otpInputs.current[index + 1].focus();
-    } else if (!numericValue && index > 0) {
-      otpInputs.current[index - 1].focus();
+    }
+  };
+
+  const handleKeyPress = ({ nativeEvent: { key } }, index) => {
+    if (key === 'Backspace') {
+      const newOtp = [...otp];
+      if (otp[index]) {
+        // Clear current input if it has a value
+        newOtp[index] = '';
+        setOtp(newOtp);
+      } else if (index > 0) {
+        // Move to previous input if current is empty
+        newOtp[index - 1] = '';
+        setOtp(newOtp);
+        otpInputs.current[index - 1].focus();
+      }
     }
   };
 
@@ -142,6 +156,7 @@ const Otp = () => {
               ]}
               value={digit}
               onChangeText={(text) => handleOtpChange(text, index)}
+              onKeyPress={(e) => handleKeyPress(e, index)}
               keyboardType="number-pad"
               maxLength={1}
               ref={(ref) => (otpInputs.current[index] = ref)}

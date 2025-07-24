@@ -24,9 +24,6 @@ import { Camera } from 'expo-camera';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-// If you intend to use WebView for showing PDFs directly within the app,
-// you'd need to install and import it, but it's generally not recommended for local PDFs.
-// import { WebView } from 'react-native-webview';
 
 const { width, height } = Dimensions.get('window');
 
@@ -95,21 +92,15 @@ const SessionCard = ({ session, onPress, onJoin }) => {
   );
 };
 
-// Renamed and repurposed from PdfViewerModal to ReportActionModal
-// This modal primarily serves to show a loading state while fetching the PDF
-// and then delegates to sharing or downloading.
 const ReportActionModal = ({ visible, sessionId, token, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [actionType, setActionType] = useState(null); // 'view' or 'download'
+  const [actionType, setActionType] = useState(null);
 
   useEffect(() => {
     if (visible && sessionId && token && actionType) {
       if (actionType === 'view') {
         handleViewPdf();
       } else if (actionType === 'download') {
-        // The download function is now primarily handled by the SessionDetailsModal
-        // This modal will just show a loading state briefly if invoked from here
-        // In this refactored structure, handleDownloadPdf is not called from here directly
       }
     }
   }, [visible, sessionId, token, actionType]);
@@ -117,7 +108,7 @@ const ReportActionModal = ({ visible, sessionId, token, onClose }) => {
   const handleViewPdf = async () => {
     setLoading(true);
     const fileName = `session-report-${sessionId}.pdf`;
-    const fileUri = `${FileSystem.cacheDirectory}${fileName}`; // Temporary cache location
+    const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
 
     try {
       console.log('Attempting to fetch PDF for viewing...');
@@ -141,17 +132,16 @@ const ReportActionModal = ({ visible, sessionId, token, onClose }) => {
                 const errorJson = JSON.parse(errorText);
                 errorMessage = errorJson.message || errorMessage;
             } catch (parseError) {
-                // If not JSON, use the raw text
             }
         }
         throw new Error(errorMessage);
       }
 
-      const pdfBlob = await response.blob(); // Get the response as a Blob
+      const pdfBlob = await response.blob();
       const fileReader = new FileReader();
 
       fileReader.onload = async () => {
-        const base64Data = fileReader.result.split(',')[1]; // Extract base64 part
+        const base64Data = fileReader.result.split(',')[1];
         await FileSystem.writeAsStringAsync(fileUri, base64Data, { encoding: FileSystem.EncodingType.Base64 });
 
         console.log('PDF saved to cache:', fileUri);
@@ -169,7 +159,7 @@ const ReportActionModal = ({ visible, sessionId, token, onClose }) => {
           );
         }
       };
-      fileReader.readAsDataURL(pdfBlob); // Convert Blob to Data URL (base64) for writing
+      fileReader.readAsDataURL(pdfBlob);
 
     } catch (error) {
       console.error('Error fetching or viewing PDF:', error);
@@ -179,7 +169,7 @@ const ReportActionModal = ({ visible, sessionId, token, onClose }) => {
       );
     } finally {
       setLoading(false);
-      onClose(); // Close the modal after attempt, whether success or fail
+      onClose();
     }
   };
 
@@ -231,14 +221,14 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
   };
 
   const handleDownloadReport = async () => {
-    if (downloading) return; // Prevent double tap
+    if (downloading) return;
 
     setDownloading(true);
-    setCurrentActionType('download'); // Set action type for the loading modal
-    setReportActionModalVisible(true); // Show the loading modal
+    setCurrentActionType('download');
+    setReportActionModalVisible(true);
 
     const fileName = `${session.clientName.replace(/\s+/g, '_')}_${session.date.replace(/-/g, '')}_report.pdf`;
-    const downloadDest = `${FileSystem.documentDirectory}${fileName}`; // Use documentDirectory for more persistent storage
+    const downloadDest = `${FileSystem.documentDirectory}${fileName}`;
 
     try {
       console.log('Starting PDF download to:', downloadDest);
@@ -262,15 +252,12 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
                 const errorJson = JSON.parse(errorText);
                 errorMessage = errorJson.message || errorMessage;
             } catch (parseError) {
-                // If not JSON, use the raw text
             }
         }
         throw new Error(errorMessage);
       }
 
-      // Get the response as an ArrayBuffer
       const pdfArrayBuffer = await response.arrayBuffer();
-      // Convert ArrayBuffer to Base64 string
       const base64Pdf = btoa(String.fromCharCode(...new Uint8Array(pdfArrayBuffer)));
 
       await FileSystem.writeAsStringAsync(downloadDest, base64Pdf, { encoding: FileSystem.EncodingType.Base64 });
@@ -294,7 +281,7 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
       Alert.alert('Download Failed', error.message || 'Failed to download PDF report. Please try again.');
     } finally {
       setDownloading(false);
-      setReportActionModalVisible(false); // Hide the loading modal
+      setReportActionModalVisible(false);
       setCurrentActionType(null);
     }
   };
@@ -333,19 +320,19 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
                 <MaterialCommunityIcons name="timer-outline" size={20} color="#007AFF" />
                 <Text style={styles.modalInfoText}>{session.duration}</Text>
               </View>
+              <View style={styles.modalInfoRow}>
+                <MaterialCommunityIcons name="note-text-outline" size={20} color="#007AFF" />
+                <View style={styles.notesContainer}>
+                  <Text style={styles.modalNotesLabel}>Notes</Text>
+                  <Text style={styles.modalNotesText}>
+                    {session.notes || 'No notes available'}
+                  </Text>
+                </View>
+              </View>
             </View>
 
-           
-            {session.status != 'completed' && session.reportShareStatus === true && (
+            {session.status !== 'completed' && session.reportShareStatus === true && (
               <View style={styles.buttonContainer}>
-                {/* <TouchableOpacity
-                  style={[styles.viewButton, downloading && styles.viewButtonDisabled]}
-                  onPress={handleViewReport}
-                  disabled={downloading}
-                >
-                  <MaterialCommunityIcons name="eye" size={20} color="#fff" />
-                  <Text style={styles.viewButtonText}>View Report</Text>
-                </TouchableOpacity> */}
                 <TouchableOpacity
                   style={[styles.downloadButton, downloading && styles.downloadButtonDisabled]}
                   onPress={handleDownloadReport}
@@ -374,11 +361,6 @@ const SessionDetailsModal = ({ visible, session, onClose }) => {
 };
 
 const VideoCallModal = ({ visible, sessionId, onClose }) => {
-  // WebView requires installation: expo install react-native-webview
-  // If you don't have it installed, this component will cause an error.
-  // Make sure you import WebView if you use this.
-  // For the purpose of providing a complete working solution, I'm assuming it's installed or will be.
-  // If not, you might consider linking to an external browser for video calls as well.
   const WebView = require('react-native-webview').WebView;
 
   return (
@@ -446,12 +428,6 @@ export default function CounsellorSessions() {
   }, [selectedFilter, sessions]);
 
   const requestPermissions = async () => {
-    // For saving files to media library (optional, depends on desired save location)
-    // const { status: mediaLibraryStatus } = await MediaLibrary.requestPermissionsAsync();
-    // if (mediaLibraryStatus !== 'granted') {
-    //   Alert.alert('Permission required', 'Media Library permission is needed to save files.');
-    // }
-
     const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
     const { status: audioStatus } = await Audio.requestPermissionsAsync();
     if (cameraStatus !== 'granted' || audioStatus !== 'granted') {
@@ -767,9 +743,12 @@ const styles = StyleSheet.create({
   modalSection: { backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: 16, padding: 18, marginBottom: 16 },
   modalSectionTitle: { fontSize: 16, fontWeight: '700', color: '#061B36', marginBottom: 12 },
   modalClientName: { fontSize: 18, fontWeight: '700', color: '#061B36', marginBottom: 4 },
-  modalSessionType: { fontSize: 14, color: '#007AFF', fontWeight: '600' },
-  modalInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  modalSessionType: { fontSize: 14, color: '#007AFF', fontWeight: '600', marginBottom: 8 },
+  modalInfoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   modalInfoText: { fontSize: 16, color: '#333', marginLeft: 12, fontWeight: '500' },
+  modalNotesLabel: { fontSize: 16, color: '#333', fontWeight: '500', marginBottom: 4 },
+  modalNotesText: { fontSize: 14, color: '#666', fontWeight: '400', flexShrink: 1, flexWrap: 'wrap' },
+  notesContainer: { flex: 1, marginLeft: 12 },
   paymentStatusBadge: (status) => ({
     marginTop: 5,
     marginBottom: 5,

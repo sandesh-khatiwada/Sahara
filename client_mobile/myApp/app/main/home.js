@@ -553,9 +553,7 @@ export default function HomeScreen() {
             Your mood history from the past 7 days journal
           </Text>
           <MoodChart history={moodHistory} />
-          <TouchableOpacity style={styles.saveMoodButton}>
-            <Text style={styles.saveMoodText}>View Detailed Analysis</Text>
-          </TouchableOpacity>
+   
         </View>
 
         {/* Sleep History */}
@@ -569,7 +567,7 @@ export default function HomeScreen() {
       </View>
     </ScrollView>
   );
-}
+}  
 
 const styles = StyleSheet.create({
   container: {

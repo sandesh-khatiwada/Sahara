@@ -974,7 +974,6 @@ export const addFeedbackAndRating = async (req, res) => {
   }
 };
 
-
 export const addSleepLog = async (req, res) => {
     try {
         const { hoursSlept, quality } = req.body;
@@ -990,18 +989,19 @@ export const addSleepLog = async (req, res) => {
         } 
 
         const timezone = 'Asia/Kathmandu';
-        const startOfDay = moment().tz(timezone).startOf('day').toDate();
-        const endOfDay = moment().tz(timezone).endOf('day').toDate();
+        const yesterday = moment().tz(timezone).subtract(1, 'days');
+        const startOfYesterday = yesterday.startOf('day').toDate();
+        const endOfYesterday = yesterday.endOf('day').toDate();
 
         const existingLog = await SleepLog.findOne({
             user: userId,
-            timestamp: { $gte: startOfDay, $lte: endOfDay }
+            timestamp: { $gte: startOfYesterday, $lte: endOfYesterday }
         });
 
         if (existingLog) {
             return res.status(400).json({
                 success: false,
-                message: 'You have already added a sleep log for today.'
+                message: "You have already added last night's sleep log."
             });
         }
 
@@ -1030,7 +1030,6 @@ export const addSleepLog = async (req, res) => {
         });
     }
 };
-
 
 export const getSleepLogHistory = async (req, res) => {
     try {

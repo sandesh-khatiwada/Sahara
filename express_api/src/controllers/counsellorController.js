@@ -545,7 +545,7 @@ export const getSessionHistory = async (req, res) => {
 
 
 export const getPdfReport = async (req, res) => {
-  let doc = null;
+   let doc = null;
   
   try {
     const counsellorId = req.counsellor._id;
@@ -574,7 +574,7 @@ export const getPdfReport = async (req, res) => {
       });
     }
 
-    if(session.reportShareStatus == false){
+    if (session.reportShareStatus === false) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: User has not provided consent to access report',
@@ -602,7 +602,7 @@ export const getPdfReport = async (req, res) => {
       },
     }).select('hoursSlept quality timestamp');
 
-    // Fetch journal entries (only shared ones)
+    // Fetch journal entries (only shared ones), sorted by timestamp descending to get the most recent first
     const journalEntries = await JournalEntry.find({
       user: user._id,
       timestamp: {
@@ -610,9 +610,11 @@ export const getPdfReport = async (req, res) => {
         $lte: endDate.toJSDate(),
       },
       shareStatus: true,
-    }).select('explicitEmotion predictedEmotion timestamp');
+    })
+      .select('explicitEmotion predictedEmotion timestamp')
+      .sort({ timestamp: -1 }); // Sort by timestamp descending
 
-    // Create date range and filter days with data
+    // Create date range
     const dateRange = [];
     for (let i = 0; i < 30; i++) {
       const date = endDate.minus({ days: i });
@@ -623,7 +625,7 @@ export const getPdfReport = async (req, res) => {
     }
     dateRange.reverse(); // Chronological order
 
-    // Map data to dates
+    // Map sleep logs to dates
     const sleepLogMap = new Map(
       sleepLogs.map(log => [
         DateTime.fromJSDate(log.timestamp).toFormat('MM/dd/yyyy'),
@@ -633,15 +635,19 @@ export const getPdfReport = async (req, res) => {
         },
       ])
     );
-    const journalMap = new Map(
-      journalEntries.map(entry => [
-        DateTime.fromJSDate(entry.timestamp).toFormat('MM/dd/yyyy'),
-        { 
-          explicitEmotion: entry.explicitEmotion || 'N/A', 
-          predictedEmotion: entry.predictedEmotion || 'N/A' 
-        },
-      ])
-    );
+
+    // Map journal entries to dates, selecting only the most recent entry per day
+    const journalMap = new Map();
+    journalEntries.forEach(entry => {
+      const date = DateTime.fromJSDate(entry.timestamp).toFormat('MM/dd/yyyy');
+      // Only keep the entry if it's the first (most recent) for this date
+      if (!journalMap.has(date)) {
+        journalMap.set(date, {
+          explicitEmotion: entry.explicitEmotion || 'N/A',
+          predictedEmotion: entry.predictedEmotion || 'N/A'
+        });
+      }
+    });
 
     // Filter date range for sleep and mood data
     const sleepDateRange = dateRange.filter(({ date }) => sleepLogMap.has(date));
@@ -666,15 +672,15 @@ export const getPdfReport = async (req, res) => {
       ['N/A', 0]
     )[0];
 
-    // Calculate mood summary
+    // Calculate mood summary using only the most recent entry per day
     const explicitCounts = { Bad: 0, Low: 0, Neutral: 0, Good: 0, Great: 0 };
     const predictedCounts = { sadness: 0, joy: 0, love: 0, anger: 0, fear: 0, surprise: 0 };
-    journalEntries.forEach(entry => {
-      if (entry.explicitEmotion && explicitCounts.hasOwnProperty(entry.explicitEmotion)) {
-        explicitCounts[entry.explicitEmotion]++;
+    journalMap.forEach(({ explicitEmotion, predictedEmotion }) => {
+      if (explicitEmotion && explicitCounts.hasOwnProperty(explicitEmotion)) {
+        explicitCounts[explicitEmotion]++;
       }
-      if (entry.predictedEmotion && predictedCounts.hasOwnProperty(entry.predictedEmotion)) {
-        predictedCounts[entry.predictedEmotion]++;
+      if (predictedEmotion && predictedCounts.hasOwnProperty(predictedEmotion)) {
+        predictedCounts[predictedEmotion]++;
       }
     });
     const mostCommonExplicit = Object.entries(explicitCounts).reduce(
@@ -706,7 +712,7 @@ export const getPdfReport = async (req, res) => {
     // Table constants
     const tableWidth = 400;
     const tableLeft = (595 - tableWidth) / 2; // Center the table
-    const colWidths = [80, 100, 80, 80, 60]; // Adjusted for better spacing
+    const colWidths = [80, 100, 80, 80]; // Adjusted for better spacing
     const rowHeight = 20;
     
     // Chart constants
@@ -989,12 +995,12 @@ export const getPdfReport = async (req, res) => {
     
     yPosition += 25;
 
-    if (journalEntries.length > 0) {
+    if (journalMap.size > 0) {
       // Description
       doc.font('Helvetica')
          .fontSize(10)
          .fillColor('#555')
-         .text('The following table shows the user\'s self-reported and AI-predicted emotions for days with shared journal entries.', 
+         .text('The following table shows the user\'s self-reported and AI-predicted emotions for days with shared journal entries. Only the most recent entry per day is included.', 
                50, yPosition, { width: pageWidth, align: 'justify' });
       
       yPosition += 30;

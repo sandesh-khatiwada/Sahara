@@ -17,10 +17,14 @@ const sleepLogSchema = new mongoose.Schema({
   },
   timestamp: {
     type: Date,
-    default: Date.now
+    default: () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return yesterday;
+    }
   }
 });
 
 const SleepLog = mongoose.model('SleepLog', sleepLogSchema);
 
-export default SleepLog; 
+export default SleepLog;

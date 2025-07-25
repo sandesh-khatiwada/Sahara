@@ -104,8 +104,14 @@ const journals = () => {
       const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.message || 'Failed to save journal entry');
 
+      // Extract predictedEmotion and confidenceScore, format as requested
       const predictedEmotion = responseData.data.predictedEmotion;
-      Alert.alert('Journal Saved Successfully!', `Emotion Detected : ${predictedEmotion}`);
+      const confidenceScore = (responseData.data.confidenceScore * 100).toFixed(2);
+      const capitalizedEmotion = predictedEmotion.charAt(0).toUpperCase() + predictedEmotion.slice(1);
+      Alert.alert(
+        'Journal Saved Successfully!',
+        `Detected Emotion: ${capitalizedEmotion}\nConfidence Score: ${confidenceScore}%`
+      );
 
       setTitle('');
       setMood(null);
@@ -310,7 +316,6 @@ const styles = StyleSheet.create({
   historyMood: { fontSize: 14, color: '#666', marginTop: 5 },
   historyContent: { fontSize: 14, color: '#333', marginTop: 5 },
   historyDate: { fontSize: 12, color: '#666', marginTop: 5 },
-  // MODAL STYLES
   modalContainer: { flex: 1, backgroundColor: '#fff' },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

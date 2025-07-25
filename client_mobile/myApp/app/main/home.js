@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@env';
 import Slider from '@react-native-community/slider';
 import { Picker } from '@react-native-picker/picker';
+import moment from 'moment-timezone';
 
 // Mood mapping
 const moodLevels = {
@@ -113,18 +114,16 @@ const MoodBar = ({ mood }) => {
 };
 
 const MoodChart = ({ history }) => {
-  const today = new Date('2025-07-24T17:30:00+05:45'); // Current date: Thursday, July 24, 2025
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  // Generate the past 7 days in reverse chronological order
+  // Use moment-timezone for Nepal's timezone (+0545)
+  const today = moment().tz('Asia/Kathmandu').startOf('day');
   const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
+    const date = moment(today).subtract(i, 'days');
     return {
-      date: `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`,
-      day: days[date.getDay()],
+      date: date.format('MM/DD/YYYY'),
+      day: days[date.day()],
     };
-  }).reverse(); // [Fri, Sat, Sun, Mon, Tue, Wed, Thu]
+  }).reverse(); // [Sat, Sun, Mon, Tue, Wed, Thu, Fri]
 
   // Map mood history to the past 7 days
   const dayMoodMap = {};
@@ -181,18 +180,14 @@ const SleepBar = ({ hours, quality }) => {
 
 const SleepChart = ({ history }) => {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const today = new Date('2025-07-24T17:30:00+05:45');
+  const today = moment().tz('Asia/Kathmandu').startOf('day');
   const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
+    const date = moment(today).subtract(i, 'days');
     return {
-      date: `${month}/${day}/${year}`,
-      day: days[date.getDay()],
+      date: date.format('MM/DD/YYYY'),
+      day: days[date.day()],
     };
-  }).reverse();
+  }).reverse(); // [Sat, Sun, Mon, Tue, Wed, Thu, Fri]
 
   const daySleepMap = {};
   last7Days.forEach(({ date, day }) => (daySleepMap[date] = { day, hours: null, quality: null }));
@@ -206,6 +201,7 @@ const SleepChart = ({ history }) => {
       };
     }
   });
+
   console.log('Sleep History:', history);
   console.log('Last 7 Days:', last7Days);
   console.log('Day Sleep Map:', daySleepMap);
@@ -553,7 +549,6 @@ export default function HomeScreen() {
             Your mood history from the past 7 days journal
           </Text>
           <MoodChart history={moodHistory} />
-   
         </View>
 
         {/* Sleep History */}

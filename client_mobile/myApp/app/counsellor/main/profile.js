@@ -88,6 +88,73 @@ const EditModal = ({ visible, title, value, onClose, onSave, multiline = false, 
   );
 };
 
+// New ResetPasswordModal component
+const ResetPasswordModal = ({ visible, onClose, onSubmit }) => {
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleSubmit = () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'All fields are required');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New password and confirm password do not match');
+      return;
+    }
+   
+    onSubmit({ oldPassword, newPassword });
+    setOldPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={styles.modalCancel}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Reset Password</Text>
+          <TouchableOpacity onPress={handleSubmit}>
+            <Text style={styles.modalSave}>Submit</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.modalContent}>
+          <TextInput
+            style={styles.modalInput}
+            value={oldPassword}
+            onChangeText={setOldPassword}
+            placeholder="Enter old password"
+            secureTextEntry
+          />
+          <TextInput
+            style={styles.modalInput}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="Enter new password"
+            secureTextEntry
+          />
+          <TextInput
+            style={styles.modalInput}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Confirm new password"
+            secureTextEntry
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 export default function CounsellorProfile() {
   const [counsellorData, setCounsellorData] = useState({
     fullName: '',
@@ -108,6 +175,7 @@ export default function CounsellorProfile() {
     multiline: false,
     keyboardType: 'default',
   });
+  const [resetPasswordModal, setResetPasswordModal] = useState(false); // New state for reset password modal
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -220,8 +288,8 @@ export default function CounsellorProfile() {
           designation: json.data.designation || '',
           chargePerHour: json.data.chargePerHour || 0,
           profilePhoto: json.data.profilePhoto || null,
-          nmcNo: json.data.nmcNo ,
-          qualification: json.data.qualification ,
+          nmcNo: json.data.nmcNo || '',
+          qualification: json.data.qualification || '',
         });
         Alert.alert('Success', 'Profile updated successfully');
       } else {
@@ -230,6 +298,41 @@ export default function CounsellorProfile() {
     } catch (err) {
       console.error('Update profile error:', err.message);
       Alert.alert('Error', `Failed to update profile: ${err.message}`);
+      if (err.message.includes('Unauthorized') || err.message.includes('Invalid token') || err.message.includes('No token found')) {
+        Alert.alert(
+          'Authentication Error',
+          'Your session is invalid. Please login again.',
+          [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        );
+      }
+    }
+  };
+
+  // New function to handle password reset
+  const handleResetPassword = async ({ oldPassword, newPassword }) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('No token found');
+      }
+      const res = await fetch(`${API_BASE_URL}/api/counsellors/reset-password`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        Alert.alert('Success', 'Password updated successfully');
+        setResetPasswordModal(false);
+      } else {
+        throw new Error(json.message || 'Failed to reset password');
+      }
+    } catch (err) {
+      console.error('Reset password error:', err.message);
+      Alert.alert('Error', err.message || 'Failed to reset password');
       if (err.message.includes('Unauthorized') || err.message.includes('Invalid token') || err.message.includes('No token found')) {
         Alert.alert(
           'Authentication Error',
@@ -382,6 +485,12 @@ export default function CounsellorProfile() {
             value="Set your working hours and shifts"
             onPress={() => router.push('/counsellor/settings/availability')}
           />
+          <ProfileItem
+            icon="lock-reset"
+            title="Reset Password"
+            value="Change your account password"
+            onPress={() => setResetPasswordModal(true)}
+          />
         </ProfileSection>
 
         <ProfileSection title="Account">
@@ -400,6 +509,11 @@ export default function CounsellorProfile() {
           keyboardType={editModal.keyboardType}
           onClose={() => setEditModal({ ...editModal, visible: false })}
           onSave={handleSaveField}
+        />
+        <ResetPasswordModal
+          visible={resetPasswordModal}
+          onClose={() => setResetPasswordModal(false)}
+          onSubmit={handleResetPassword}
         />
       </ScrollView>
     </View>
@@ -578,6 +692,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
+    marginBottom: 15, // Added margin for spacing between inputs
   },
   modalInputMultiline: {
     height: 120,

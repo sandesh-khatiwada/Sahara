@@ -1,6 +1,7 @@
 import express from 'express';
-import { addAvailability, getBookingRequests, getSessions, acceptBookingRequest, declineBookingRequest, getCounsellorProfile, editCounsellorProfile, getCounsellorAvailability , getSessionHistory, getTotalStatistics, getPdfReport } from '../controllers/counsellorController.js';
+import { addAvailability, getBookingRequests, getSessions, acceptBookingRequest, declineBookingRequest, getCounsellorProfile, editCounsellorProfile, getCounsellorAvailability , getSessionHistory, getTotalStatistics, getPdfReport, resetPassword } from '../controllers/counsellorController.js';
 import { verifyTokenCounsellor } from '../middleware/authMiddleware.js';
+
 
 const router = express.Router();
 
@@ -29,7 +30,9 @@ router.get("/availability",verifyTokenCounsellor, getCounsellorAvailability);
 
 router.get("/session-history", verifyTokenCounsellor, getSessionHistory);
 
-router.post("/session/pdf-report",verifyTokenCounsellor, getPdfReport)
+router.post("/session/pdf-report",verifyTokenCounsellor, getPdfReport);
+
+router.post("/reset-password",verifyTokenCounsellor, resetPassword)
 
 
 export default router; 

@@ -11,7 +11,8 @@ import {
   Alert,
   Modal,
   TextInput,
-  Switch, // Added for checkbox functionality
+  Switch,
+  RefreshControl, // Added for pull-to-refresh
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -165,11 +166,12 @@ const DoctorProfile = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteDescription, setNoteDescription] = useState("");
-  const [shareStatus, setShareStatus] = useState(false); // Added for checkbox
+  const [shareStatus, setShareStatus] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // Added for pull-to-refresh
 
   const fetchCounsellor = async () => {
     try {
-      setLoading(true);
+      if (!refreshing) setLoading(true); // Only set loading if not refreshing
       setError(null);
       const token = await AsyncStorage.getItem("token");
       console.log("Token:", token ? "Found" : "Not found");
@@ -253,6 +255,7 @@ const DoctorProfile = () => {
       Alert.alert("Error", `Failed to fetch counsellor: ${err.message}`);
     } finally {
       setLoading(false);
+      setRefreshing(false); // Reset refreshing state
     }
   };
 
@@ -264,6 +267,11 @@ const DoctorProfile = () => {
       setLoading(false);
     }
   }, [email]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchCounsellor();
+  };
 
   const toggleDay = (dayId) => {
     setSelectedDay(selectedDay === dayId ? null : dayId);
@@ -328,7 +336,7 @@ const DoctorProfile = () => {
         time,
         noteTitle,
         noteDescription,
-        shareStatus, // Added to request body
+        shareStatus,
       };
 
       const url = `${API_BASE_URL}/api/users/counsellor-booking`;
@@ -359,7 +367,7 @@ const DoctorProfile = () => {
         setIsModalVisible(false);
         setNoteTitle("");
         setNoteDescription("");
-        setShareStatus(false); // Reset checkbox
+        setShareStatus(false);
         setSelectedSlot(null);
         setSelectedDay(null);
       } else {
@@ -381,7 +389,7 @@ const DoctorProfile = () => {
     setIsModalVisible(false);
     setNoteTitle("");
     setNoteDescription("");
-    setShareStatus(false); // Reset checkbox
+    setShareStatus(false);
   };
 
   const getActiveDaysCount = () => {
@@ -407,6 +415,9 @@ const DoctorProfile = () => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View style={styles.header}>
           <TouchableOpacity
@@ -762,7 +773,7 @@ const DoctorProfile = () => {
                         thumbColor={shareStatus ? "#fff" : "#f4f3f4"}
                       />
                       <Text style={styles.checkboxLabel}>
-                        Share Sleeplogs and Emotion Insights report. 
+                        Share Sleeplogs and Emotion Insights report.
                       </Text>
                     </View>
                     <View style={styles.modalButtonContainer}>
@@ -772,7 +783,7 @@ const DoctorProfile = () => {
                           setIsModalVisible(false);
                           setNoteTitle("");
                           setNoteDescription("");
-                          setShareStatus(false); // Reset checkbox
+                          setShareStatus(false);
                         }}
                       >
                         <Text style={styles.modalButtonText}>Cancel</Text>

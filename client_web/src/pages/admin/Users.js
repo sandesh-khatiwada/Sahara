@@ -73,7 +73,7 @@ const Users = () => {
       setUsers(response.data.data);
       setTotalPages(1); // Search results typically aren't paginated
     } catch (err) {
-      setError('Failed to search users');
+      // setError('Failed to search users');
     } finally {
       setLoading(false);
     }

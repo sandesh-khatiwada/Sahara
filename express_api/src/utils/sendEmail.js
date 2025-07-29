@@ -23,7 +23,7 @@ export const sendWelcomeEmail = async (email, fullName, credentials) => {
             <p><strong>Email:</strong> ${credentials.email}</p>
             <p><strong>Password:</strong> ${credentials.password}</p>
           </div>
-          <p><strong>Important:</strong> Make sure to change your password before getting started to use the app.</p>
+          <p><strong>Important:</strong> Make sure to change your password from the profie page before getting started to use the app.</p>
           <p>We wish you all the best.</p>
           <br>
           <p>Best regards,<br>Sahara Team</p>

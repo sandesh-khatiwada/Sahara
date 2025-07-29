@@ -12,6 +12,7 @@ import {
   StatusBar,
   Platform,
   ActivityIndicator,
+  RefreshControl, // Added RefreshControl import
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -193,7 +194,7 @@ export default function CounsellorHome() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [error, setError] = useState(null);
-
+  const [refreshing, setRefreshing] = useState(false); // Added state for pull-to-refresh
   const { hideNavbar, showNavbar } = useNavbar();
   const scrollY = useRef(0);
   const scrollDirection = useRef(null);
@@ -201,17 +202,14 @@ export default function CounsellorHome() {
   const handleScroll = (event) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
     const direction = currentScrollY > scrollY.current ? 'down' : 'up';
-
     if (direction !== scrollDirection.current) {
       scrollDirection.current = direction;
-
       if (direction === 'down' && currentScrollY > 50) {
         hideNavbar();
       } else if (direction === 'up' || currentScrollY < 50) {
         showNavbar();
       }
     }
-
     scrollY.current = currentScrollY;
   };
 
@@ -341,19 +339,37 @@ export default function CounsellorHome() {
     }
   };
 
+  // New function to handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        await Promise.all([
+          fetchProfileInfo(token),
+          fetchTotalStats(token),
+          fetchUpcomingSessions(token),
+          fetchPendingRequests(token),
+        ]);
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
+      setError('Failed to refresh data. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
         const userData = await AsyncStorage.getItem('user');
         const token = await AsyncStorage.getItem('token');
-
         if (userData && token) {
           const parsedUserData = JSON.parse(userData);
-
           if (parsedUserData.role === 'Counsellor' && parsedUserData.token) {
             const counsellorInfo = parsedUserData.Counsellor || parsedUserData;
             setCounsellorData(counsellorInfo);
-
             await Promise.all([
               fetchProfileInfo(token),
               fetchTotalStats(token),
@@ -450,6 +466,14 @@ export default function CounsellorHome() {
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#007AFF']} // Color of the refresh indicator
+              tintColor="#007AFF"
+            />
+          }
         >
           <CounsellorHeader profileInfo={profileInfo} onLogout={handleLogout} />
           <View style={styles.content}>
@@ -496,7 +520,6 @@ export default function CounsellorHome() {
                 </View>
               )}
             </View>
-
             {/* Upcoming Sessions */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -525,7 +548,6 @@ export default function CounsellorHome() {
                 ))
               )}
             </View>
-
             {/* Pending Requests */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -554,7 +576,6 @@ export default function CounsellorHome() {
                 ))
               )}
             </View>
-
             {/* Quick Actions */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Quick Actions</Text>

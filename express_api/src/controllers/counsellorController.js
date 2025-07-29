@@ -10,6 +10,7 @@ import SleepLog from '../models/SleepLog.js';
 import JournalEntry from '../models/JournalEntry.js';
 import PDFDocument from 'pdfkit';
 import pdfMake from 'pdfmake';
+import bcrypt from 'bcryptjs';
 
 // Function to initialize pdfMake with VFS
 const initializePdfMake = () => {
@@ -1228,5 +1229,75 @@ export const getPdfReport = async (req, res) => {
         error: error.message,
       });
     }
+  }
+};
+
+
+
+export const resetPassword = async (req, res) => {
+  try {
+    const counsellorId = req.counsellor._id;
+    const { oldPassword, newPassword } = req.body;
+
+    // Input validation
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Old password and new password are required'
+      });
+    }
+
+    // Find counsellor by ID
+    const counsellor = await Counsellor.findById(counsellorId);
+    if (!counsellor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counsellor not found'
+      });
+    }
+
+    // Verify old password
+    const isMatch = await counsellor.comparePassword(oldPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect old password'
+      });
+    }
+
+    // Check if new password is same as old password
+    const isSamePassword = await counsellor.comparePassword(newPassword);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password cannot be the same as the old password'
+      });
+    }
+
+    // Password validation
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*]).{6,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long and contain at least one number and one special character (!@#$%^&*)'
+      });
+    }
+
+    // Update password and passwordChangeStatus
+    counsellor.password = newPassword; // The pre-save hook will hash this
+    counsellor.passwordChangeStatus = true;
+    await counsellor.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+
+  } catch (error) {
+    console.error('Error in resetPassword:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 };

@@ -159,7 +159,6 @@ const Session = () => {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const sessionsJson = await sessionsRes.json();
-
       const pendingRes = await fetch(`${API_BASE_URL}/api/users/pending-appointments`, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
@@ -191,9 +190,11 @@ const Session = () => {
           time: appt.time,
           status: appt.status === 'accepted' ? 'confirmed' : appt.status,
           paymentPending: appt.paymentStatus === 'pending',
+          paymentStatus: appt.paymentStatus, // Add paymentStatus to appointment object
           chargePerHour: appt.counsellor.chargePerHour,
           profilePhoto: appt.counsellor.profilePhoto?.filename || 'default.jpg',
         };
+
         const now = new Date();
         const timeDiff = Math.abs(new Date(appt.dateTime) - now) / 1000 / 60;
         if (timeDiff <= 3000000000 && appt.status === 'accepted' && appt.paymentStatus === 'completed') {
@@ -215,6 +216,7 @@ const Session = () => {
       mappedAppointments.upcoming.sort((a, b) => new Date(a.date) - new Date(b.date));
       mappedAppointments.pending.sort((a, b) => new Date(a.date) - new Date(b.date));
       mappedAppointments.past.sort((a, b) => new Date(b.date) - new Date(b.date));
+
       setAppointments(mappedAppointments);
     } catch (err) {
       setError(`Failed to fetch sessions: ${err.message}`);
@@ -266,7 +268,6 @@ const Session = () => {
       });
 
       const json = await res.json();
-
       if (json.success) {
         Alert.alert('Success', 'Feedback submitted successfully!');
         setAppointments((prev) => ({
@@ -311,7 +312,6 @@ const Session = () => {
       });
 
       const result = await response.json();
-
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to join session');
       }
@@ -347,7 +347,9 @@ const Session = () => {
       <Text style={styles.dateText}>
         {app.date} {app.time}
       </Text>
-       
+      <Text style={styles.paymentStatusText}>
+        Payment: {app.paymentStatus}
+      </Text>
       {app.status === 'happeningNow' && (
         <TouchableOpacity
           style={styles.actionButton}
@@ -565,7 +567,6 @@ const Session = () => {
                 ) : (
                   <Text style={styles.noDataText}>You don't have any upcoming sessions</Text>
                 )}
-
                 <Text style={styles.sectionTitle}>Pending Appointments</Text>
                 {appointments.pending.length > 0 ? (
                   appointments.pending.map(renderPendingAppointment)
@@ -675,6 +676,10 @@ const styles = StyleSheet.create({
     color: '#003087',
   },
   dateText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  paymentStatusText: {
     fontSize: 14,
     color: '#666',
   },

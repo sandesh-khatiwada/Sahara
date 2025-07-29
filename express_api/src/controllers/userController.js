@@ -531,7 +531,6 @@ export const getAllCounsellors = async (req, res) => {
   }
 };
 
-
 export const getCounsellorByEmail = async (req, res) => {
   try {
     const { email } = req.query;
@@ -545,11 +544,12 @@ export const getCounsellorByEmail = async (req, res) => {
       status: 'accepted'
     }).select('dateTime').lean();
 
-    // Map sessions to their day and time
+    // Map sessions to their day and time, ensuring UTC for consistency
     const bookedSlots = acceptedSessions.map(session => {
       const date = new Date(session.dateTime);
-      const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long' });
-      const time = date.toISOString().split('T')[1].slice(0, 5); // e.g., '18:00'
+      // Use UTC to avoid timezone offset issues
+      const dayOfWeek = date.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+      const time = date.toISOString().split('T')[1].slice(0, 5).trim(); // e.g., '19:00', trim to avoid whitespace
       return { dayOfWeek, time };
     });
 
@@ -674,11 +674,20 @@ export const getCounsellorByEmail = async (req, res) => {
                           cond: {
                             $not: {
                               $in: [
-                                { dayOfWeek: '$$avail.dayOfWeek', time: '$$time' },
-                                bookedSlots.map(slot => ({
-                                  dayOfWeek: slot.dayOfWeek,
-                                  time: slot.time
-                                }))
+                                { $trim: { input: '$$time' } }, // Normalize time in availability
+                                {
+                                  $map: {
+                                    input: bookedSlots,
+                                    as: 'booked',
+                                    in: {
+                                      $cond: [
+                                        { $eq: ['$$booked.dayOfWeek', '$$avail.dayOfWeek'] },
+                                        '$$booked.time',
+                                        null
+                                      ]
+                                    }
+                                  }
+                                }
                               ]
                             }
                           }
@@ -699,8 +708,8 @@ export const getCounsellorByEmail = async (req, res) => {
           designation: 1,
           chargePerHour: 1,
           esewaAccountId: 1,
-          nmcNo:1,
-          qualification:1,
+          nmcNo: 1,
+          qualification: 1,
           profilePhoto: 1,
           documents: 1,
           patientsCount: 1,

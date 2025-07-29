@@ -13,7 +13,7 @@ import Chat from '../models/Chat.js'; // Adjust path as needed
 dotenv.config();
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI ||"mongodb+srv://khatiwadasandesh01:aHMQIqc3X9b1LVYW@cluster0.xwcq4o0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => {
     console.error('MongoDB connection error:', err);
